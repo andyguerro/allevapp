@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { Plus, Search, Filter, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import AttachmentsManager from './AttachmentsManager';
 
 interface Facility {
   id: string;
@@ -31,6 +32,8 @@ const FacilitiesManagement: React.FC = () => {
   const [filterFarm, setFilterFarm] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
+  const [selectedFacilityName, setSelectedFacilityName] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -434,7 +437,16 @@ const FacilitiesManagement: React.FC = () => {
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
-                  <Eye size={16} />
+                  <button
+                    onClick={() => {
+                      setSelectedFacilityId(facility.id);
+                      setSelectedFacilityName(facility.name);
+                    }}
+                    className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Gestisci allegati"
+                  >
+                    <Paperclip size={16} />
+                  </button>
                 </button>
                 <button className="p-2 text-gray-400 hover:text-green-600 transition-colors">
                   <Edit size={16} />
@@ -598,6 +610,19 @@ const FacilitiesManagement: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Attachments Manager */}
+      {selectedFacilityId && (
+        <AttachmentsManager
+          entityType="facility"
+          entityId={selectedFacilityId}
+          entityName={selectedFacilityName}
+          onClose={() => {
+            setSelectedFacilityId(null);
+            setSelectedFacilityName('');
+          }}
+        />
       )}
 
       {filteredFacilities.length === 0 && (

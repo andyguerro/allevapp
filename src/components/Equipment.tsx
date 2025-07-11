@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Package, Plus, Edit, Eye, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Package, Plus, Edit, Eye, AlertTriangle, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import AttachmentsManager from './AttachmentsManager';
 
 interface EquipmentProps {
   initialFilters?: {
@@ -47,6 +48,8 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
+  const [selectedEquipmentName, setSelectedEquipmentName] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -521,11 +524,14 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
                 <button 
-                  onClick={() => handleEdit(item)}
+                  onClick={() => {
+                    setSelectedEquipmentId(item.id);
+                    setSelectedEquipmentName(item.name);
+                  }}
                   className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Visualizza dettagli"
+                  title="Gestisci allegati"
                 >
-                  <Eye size={16} />
+                  <Paperclip size={16} />
                 </button>
                 <button 
                   onClick={() => handleEdit(item)}
@@ -889,6 +895,19 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Attachments Manager */}
+      {selectedEquipmentId && (
+        <AttachmentsManager
+          entityType="equipment"
+          entityId={selectedEquipmentId}
+          entityName={selectedEquipmentName}
+          onClose={() => {
+            setSelectedEquipmentId(null);
+            setSelectedEquipmentName('');
+          }}
+        />
       )}
 
       {filteredEquipment.length === 0 && (

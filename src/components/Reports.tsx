@@ -1189,6 +1189,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       {selectedReportId && (
         <ReportDetails
           reportId={selectedReportId}
+          reportTitle={reports.find(r => r.id === selectedReportId)?.title}
           onClose={() => setSelectedReportId(null)}
         />
       )}
