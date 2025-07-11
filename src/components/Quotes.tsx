@@ -369,8 +369,8 @@ const Quotes: React.FC = () => {
     const matchesFarm = selectedFilters.farm.length === 0 || 
                         (quote.farm_id && selectedFilters.farm.some(option => option.value === quote.farm_id));
     
-    const matchesStatus = matchesStatus && matchesSupplier && matchesFarm;
-    return matchesSearch && matchesStatus;
+    const matchesFilters = matchesStatus && matchesSupplier && matchesFarm;
+    return matchesSearch && matchesFilters;
   });
 
   const isOverdue = (dueDate: string) => {
