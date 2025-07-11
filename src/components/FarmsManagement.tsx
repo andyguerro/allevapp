@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign } from 'lucide-react';
+import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Farm {
@@ -53,11 +53,7 @@ interface FarmData {
   };
 }
 
-interface FarmsManagementProps {
-  onNavigate: (page: string, filters?: any) => void;
-}
-
-const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
+const FarmsManagement: React.FC = () => {
   const [farmsData, setFarmsData] = useState<FarmData[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'reports' | 'equipment' | 'quotes'>('reports');
