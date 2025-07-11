@@ -357,7 +357,7 @@ export interface Database {
           company: string;
           sequential_number: number;
           farm_id: string;
-          status: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          status: 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded';
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -370,7 +370,7 @@ export interface Database {
           company: string;
           sequential_number: number;
           farm_id: string;
-          status?: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          status?: 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded';
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -383,7 +383,7 @@ export interface Database {
           company?: string;
           sequential_number?: number;
           farm_id?: string;
-          status?: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          status?: 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded';
           created_by?: string;
           created_at?: string;
           updated_at?: string;
