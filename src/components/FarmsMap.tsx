@@ -5,6 +5,7 @@ interface Farm {
   id: string;
   name: string;
   address?: string;
+  company?: string;
   coordinates?: {
     lat: number;
     lng: number;

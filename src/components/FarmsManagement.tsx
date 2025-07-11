@@ -6,6 +6,7 @@ interface Farm {
   id: string;
   name: string;
   address?: string;
+  company: string;
   created_at: string;
 }
 
@@ -320,6 +321,16 @@ const FarmsManagement: React.FC = () => {
                         {farmData.farm.address}
                       </p>
                     )}
+                    <div className="mt-2">
+                      <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-sm font-medium">
+                        {selectedFarmData.farm.company}
+                      </span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="inline-block px-2 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-xs font-medium">
+                        {farmData.farm.company}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <Eye size={20} className="text-brand-gray hover:text-brand-blue transition-colors" />

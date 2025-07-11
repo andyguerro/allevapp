@@ -61,6 +61,7 @@ export interface Database {
           id: string;
           name: string;
           address: string | null;
+          company: string;
           created_at: string;
           created_by: string | null;
         };
@@ -68,6 +69,7 @@ export interface Database {
           id?: string;
           name: string;
           address?: string | null;
+          company?: string;
           created_at?: string;
           created_by?: string | null;
         };
@@ -75,6 +77,7 @@ export interface Database {
           id?: string;
           name?: string;
           address?: string | null;
+          company?: string;
           created_at?: string;
           created_by?: string | null;
         };

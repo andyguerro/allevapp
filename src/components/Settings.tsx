@@ -7,6 +7,7 @@ interface Farm {
   id: string;
   name: string;
   address?: string;
+  company: string;
   created_at: string;
 }
 
@@ -47,7 +48,8 @@ const Settings: React.FC = () => {
   // Form data
   const [farmFormData, setFarmFormData] = useState({
     name: '',
-    address: ''
+    address: '',
+    company: 'Zoogamma Spa'
   });
 
   const [supplierFormData, setSupplierFormData] = useState({
@@ -138,7 +140,8 @@ const Settings: React.FC = () => {
           .from('farms')
           .update({
             name: farmFormData.name,
-            address: farmFormData.address || null
+            address: farmFormData.address || null,
+            company: farmFormData.company
           })
           .eq('id', editingFarm.id);
 
@@ -151,6 +154,7 @@ const Settings: React.FC = () => {
           .insert({
             name: farmFormData.name,
             address: farmFormData.address || null,
+            company: farmFormData.company,
             created_by: defaultUser.id
           });
 
@@ -186,7 +190,8 @@ const Settings: React.FC = () => {
   const startEditFarm = (farm: Farm) => {
     setFarmFormData({
       name: farm.name,
-      address: farm.address || ''
+      address: farm.address || '',
+      company: farm.company
     });
     setEditingFarm(farm);
     setShowFarmModal(true);
@@ -195,7 +200,8 @@ const Settings: React.FC = () => {
   const resetFarmForm = () => {
     setFarmFormData({
       name: '',
-      address: ''
+      address: '',
+      company: 'Zoogamma Spa'
     });
     setEditingFarm(null);
     setShowFarmModal(false);
@@ -425,6 +431,11 @@ const Settings: React.FC = () => {
                 {farm.address && (
                   <p className="text-brand-gray mb-4">{farm.address}</p>
                 )}
+                <div className="mb-4">
+                  <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-sm font-medium">
+                    {farm.company}
+                  </span>
+                </div>
                 <div className="text-sm text-brand-gray">
                   Creato il {new Date(farm.created_at).toLocaleDateString()}
                 </div>
@@ -829,6 +840,21 @@ const Settings: React.FC = () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Azienda
+                </label>
+                <select
+                  required
+                  value={farmFormData.company}
+                  onChange={(e) => setFarmFormData({ ...farmFormData, company: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="Zoogamma Spa">Zoogamma Spa</option>
+                  <option value="So. Agr. Zooagri Srl">So. Agr. Zooagri Srl</option>
+                  <option value="Soc. Agr. Zooallevamenti Srl">Soc. Agr. Zooallevamenti Srl</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
                   Indirizzo
