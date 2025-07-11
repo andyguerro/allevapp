@@ -11,7 +11,7 @@ interface Project {
   company: string;
   sequential_number: number;
   farm_id: string;
-  status: 'active' | 'completed' | 'cancelled' | 'on_hold';
+  status: 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded';
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -55,7 +55,7 @@ const Projects: React.FC = () => {
     title: '',
     description: '',
     farm_id: '',
-    status: 'active' as 'active' | 'completed' | 'cancelled' | 'on_hold'
+    status: 'open' as 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded'
   });
 
   useEffect(() => {
@@ -136,10 +136,11 @@ const Projects: React.FC = () => {
 
       // Prepare filter options
       const statusOptions: Option[] = [
-        { value: 'active', label: 'Attivo' },
-        { value: 'completed', label: 'Completato' },
-        { value: 'cancelled', label: 'Annullato' },
-        { value: 'on_hold', label: 'In Sospeso' }
+        { value: 'open', label: 'Aperto' },
+        { value: 'defined', label: 'Definito' },
+        { value: 'in_progress', label: 'In Corso' },
+        { value: 'completed', label: 'Concluso' },
+        { value: 'discarded', label: 'Scartato' }
       ];
 
       const companyOptions: Option[] = [
@@ -252,7 +253,7 @@ const Projects: React.FC = () => {
       title: '',
       description: '',
       farm_id: '',
-      status: 'active'
+      status: 'open'
     });
     setShowCreateModal(false);
   };
@@ -262,7 +263,7 @@ const Projects: React.FC = () => {
       title: '',
       description: '',
       farm_id: '',
-      status: 'active'
+      status: 'open'
     });
     setEditingProject(null);
     setShowEditModal(false);
@@ -283,30 +284,33 @@ const Projects: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'open': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'defined': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'in_progress': return 'bg-green-100 text-green-800 border-green-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      case 'on_hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'discarded': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <Clock size={16} className="text-green-600" />;
+      case 'open': return <Clock size={16} className="text-blue-600" />;
+      case 'defined': return <AlertCircle size={16} className="text-yellow-600" />;
+      case 'in_progress': return <Clock size={16} className="text-green-600" />;
       case 'completed': return <CheckCircle size={16} className="text-blue-600" />;
-      case 'cancelled': return <AlertCircle size={16} className="text-red-600" />;
-      case 'on_hold': return <AlertCircle size={16} className="text-yellow-600" />;
+      case 'discarded': return <AlertCircle size={16} className="text-red-600" />;
       default: return null;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Attivo';
-      case 'completed': return 'Completato';
-      case 'cancelled': return 'Annullato';
-      case 'on_hold': return 'In Sospeso';
+      case 'open': return 'Aperto';
+      case 'defined': return 'Definito';
+      case 'in_progress': return 'In Corso';
+      case 'completed': return 'Concluso';
+      case 'discarded': return 'Scartato';
       default: return status;
     }
   };
@@ -366,7 +370,7 @@ const Projects: React.FC = () => {
             <div>
               <p className="text-sm font-medium text-brand-gray">Progetti Attivi</p>
               <p className="text-2xl font-bold text-green-600">
-                {projects.filter(p => p.status === 'active').length}
+                {projects.filter(p => p.status === 'open' || p.status === 'defined' || p.status === 'in_progress').length}
               </p>
             </div>
             <Clock size={24} className="text-green-500" />
@@ -552,13 +556,14 @@ const Projects: React.FC = () => {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded' })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="active">Attivo</option>
-                  <option value="on_hold">In Sospeso</option>
-                  <option value="completed">Completato</option>
-                  <option value="cancelled">Annullato</option>
+                  <option value="open">Aperto</option>
+                  <option value="defined">Definito</option>
+                  <option value="in_progress">In Corso</option>
+                  <option value="completed">Concluso</option>
+                  <option value="discarded">Scartato</option>
                 </select>
               </div>
 
@@ -649,13 +654,14 @@ const Projects: React.FC = () => {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded' })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="active">Attivo</option>
-                  <option value="on_hold">In Sospeso</option>
-                  <option value="completed">Completato</option>
-                  <option value="cancelled">Annullato</option>
+                  <option value="open">Aperto</option>
+                  <option value="defined">Definito</option>
+                  <option value="in_progress">In Corso</option>
+                  <option value="completed">Concluso</option>
+                  <option value="discarded">Scartato</option>
                 </select>
               </div>
 
