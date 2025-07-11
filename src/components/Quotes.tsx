@@ -68,6 +68,7 @@ const Quotes: React.FC = () => {
     supplier_id: '',
     farm_id: '',
     report_id: '',
+    project_code: '',
     amount: '',
     due_date: '',
     notes: ''
@@ -174,6 +175,13 @@ const Quotes: React.FC = () => {
     e.preventDefault();
     
     try {
+      // Prepara le note includendo il codice progetto se specificato
+      let notes = formData.notes || null;
+      if (formData.project_code.trim()) {
+        const projectNote = `Progetto: ${formData.project_code.trim()}`;
+        notes = notes ? `${projectNote}\n${notes}` : projectNote;
+      }
+
       const { error } = await supabase
         .from('quotes')
         .insert({
@@ -184,7 +192,7 @@ const Quotes: React.FC = () => {
           report_id: formData.report_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
-          notes: formData.notes || null,
+          notes: notes,
           created_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
         });
 
@@ -205,6 +213,7 @@ const Quotes: React.FC = () => {
       supplier_id: '',
       farm_id: '',
       report_id: '',
+      project_code: '',
       amount: '',
       due_date: '',
       notes: ''
@@ -219,9 +228,10 @@ const Quotes: React.FC = () => {
       supplier_id: quote.supplier_id,
       farm_id: quote.farm_id || '',
       report_id: quote.report_id || '',
+      project_code: quote.notes?.includes('Progetto:') ? quote.notes.split('Progetto: ')[1]?.split('\n')[0] || '' : '',
       amount: quote.amount ? quote.amount.toString() : '',
       due_date: quote.due_date || '',
-      notes: quote.notes || ''
+      notes: quote.notes?.replace(/Progetto: [^\n]*\n?/, '') || ''
     });
     setEditingQuote(quote);
     setShowEditModal(true);
@@ -233,6 +243,13 @@ const Quotes: React.FC = () => {
     if (!editingQuote) return;
     
     try {
+      // Prepara le note includendo il codice progetto se specificato
+      let notes = formData.notes || null;
+      if (formData.project_code.trim()) {
+        const projectNote = `Progetto: ${formData.project_code.trim()}`;
+        notes = notes ? `${projectNote}\n${notes}` : projectNote;
+      }
+
       const { error } = await supabase
         .from('quotes')
         .update({
@@ -243,7 +260,7 @@ const Quotes: React.FC = () => {
           report_id: formData.report_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
-          notes: formData.notes || null
+          notes: notes
         })
         .eq('id', editingQuote.id);
 
@@ -264,6 +281,7 @@ const Quotes: React.FC = () => {
       supplier_id: '',
       farm_id: '',
       report_id: '',
+      project_code: '',
       amount: '',
       due_date: '',
       notes: ''
@@ -515,7 +533,13 @@ const Quotes: React.FC = () => {
                 {quote.notes && (
                   <div className="mt-4 p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
                     <span className="font-medium text-brand-blue">Note:</span>
-                    <p className="text-brand-gray text-sm mt-1">{quote.notes}</p>
+                    <div className="text-brand-gray text-sm mt-1">
+                      {quote.notes.split('\n').map((line, index) => (
+                        <p key={index} className={line.startsWith('Progetto:') ? 'font-medium text-brand-blue' : ''}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -653,6 +677,22 @@ const Quotes: React.FC = () => {
                       <option key={report.id} value={report.id}>{report.title}</option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Codice Progetto (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.project_code}
+                    onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
+                    placeholder="Es: ZG-2025-001"
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                  <p className="text-xs text-brand-gray mt-1">
+                    Inserisci il codice del progetto se questo preventivo è collegato a un progetto specifico
+                  </p>
                 </div>
               </div>
 
@@ -796,6 +836,22 @@ const Quotes: React.FC = () => {
                       <option key={report.id} value={report.id}>{report.title}</option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Codice Progetto (opzionale)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.project_code}
+                    onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
+                    placeholder="Es: ZG-2025-001"
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                  <p className="text-xs text-brand-gray mt-1">
+                    Inserisci il codice del progetto se questo preventivo è collegato a un progetto specifico
+                  </p>
                 </div>
               </div>
 

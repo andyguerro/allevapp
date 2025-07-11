@@ -43,6 +43,7 @@ interface FarmData {
   reports: Report[];
   equipment: Equipment[];
   quotes: Quote[];
+  projects: Project[];
   stats: {
     openReports: number;
     urgentReports: number;
@@ -50,13 +51,28 @@ interface FarmData {
     totalEquipment: number;
     pendingQuotes: number;
     totalQuoteValue: number;
+    activeProjects: number;
+    totalProjectsValue: number;
   };
+}
+
+interface Project {
+  id: string;
+  title: string;
+  description?: string;
+  project_number: string;
+  company: string;
+  status: 'open' | 'defined' | 'in_progress' | 'completed' | 'discarded';
+  created_at: string;
+  created_user_name?: string;
+  quotes_count?: number;
+  total_quotes_value?: number;
 }
 
 const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
   const [farmsData, setFarmsData] = useState<FarmData[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'reports' | 'equipment' | 'quotes'>('reports');
+  const [activeTab, setActiveTab] = useState<'reports' | 'equipment' | 'quotes' | 'projects'>('reports');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -131,6 +147,18 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
 
         if (quotesError) throw quotesError;
 
+        // Fetch projects for this farm
+        const { data: projects, error: projectsError } = await supabase
+          .from('projects')
+          .select(`
+            id, title, description, project_number, company, status, created_at,
+            users!projects_created_by_fkey(full_name)
+          `)
+          .eq('farm_id', farm.id)
+          .order('created_at', { ascending: false });
+
+        if (projectsError) throw projectsError;
+
         // Transform data
         const transformedReports = reports.map(report => ({
           ...report,
@@ -142,6 +170,27 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
           supplier_name: quote.suppliers?.name
         }));
 
+        // Transform projects and get quotes data for each
+        const transformedProjects = await Promise.all(
+          projects.map(async (project) => {
+            const { data: projectQuotes, error: projectQuotesError } = await supabase
+              .from('quotes')
+              .select('amount')
+              .eq('farm_id', farm.id)
+              .gte('created_at', project.created_at);
+
+            const quotesCount = projectQuotes?.length || 0;
+            const totalValue = projectQuotes?.reduce((sum, quote) => sum + (quote.amount || 0), 0) || 0;
+
+            return {
+              ...project,
+              created_user_name: project.users?.full_name,
+              quotes_count: quotesCount,
+              total_quotes_value: totalValue
+            };
+          })
+        );
+
         // Calculate stats
         const stats = {
           openReports: transformedReports.filter(r => r.status === 'open').length,
@@ -149,7 +198,9 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
           workingEquipment: equipment.filter(e => e.status === 'working').length,
           totalEquipment: equipment.length,
           pendingQuotes: transformedQuotes.filter(q => q.status === 'requested' || q.status === 'received').length,
-          totalQuoteValue: transformedQuotes.reduce((sum, q) => sum + (q.amount || 0), 0)
+          totalQuoteValue: transformedQuotes.reduce((sum, q) => sum + (q.amount || 0), 0),
+          activeProjects: transformedProjects.filter(p => p.status === 'open' || p.status === 'defined' || p.status === 'in_progress').length,
+          totalProjectsValue: transformedProjects.reduce((sum, p) => sum + (p.total_quotes_value || 0), 0)
         };
 
         farmsWithData.push({
@@ -157,6 +208,7 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
           reports: transformedReports,
           equipment,
           quotes: transformedQuotes,
+          projects: transformedProjects,
           stats
         });
       }
@@ -196,7 +248,7 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'regenerated': return 'bg-purple-100 text-purple-800 border-purple-200';
         default: return 'bg-gray-100 text-gray-800 border-gray-200';
       }
-    } else {
+    } else if (type === 'quote') {
       switch (status) {
         case 'requested': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         case 'received': return 'bg-blue-100 text-blue-800 border-blue-200';
@@ -204,7 +256,17 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
         default: return 'bg-gray-100 text-gray-800 border-gray-200';
       }
+    } else if (type === 'project') {
+      switch (status) {
+        case 'open': return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'defined': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        case 'in_progress': return 'bg-green-100 text-green-800 border-green-200';
+        case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'discarded': return 'bg-red-100 text-red-800 border-red-200';
+        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      }
     }
+    return 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const getStatusIcon = (status: string, type: 'report' | 'equipment' | 'quote') => {
@@ -224,7 +286,7 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'regenerated': return <CheckCircle size={16} className="text-purple-500" />;
         default: return null;
       }
-    } else {
+    } else if (type === 'quote') {
       switch (status) {
         case 'requested': return <Clock size={16} className="text-yellow-500" />;
         case 'received': return <FileText size={16} className="text-blue-500" />;
@@ -232,7 +294,17 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'rejected': return <AlertTriangle size={16} className="text-red-500" />;
         default: return null;
       }
+    } else if (type === 'project') {
+      switch (status) {
+        case 'open': return <Clock size={16} className="text-blue-600" />;
+        case 'defined': return <AlertCircle size={16} className="text-yellow-600" />;
+        case 'in_progress': return <Clock size={16} className="text-green-600" />;
+        case 'completed': return <CheckCircle size={16} className="text-blue-600" />;
+        case 'discarded': return <AlertTriangle size={16} className="text-red-600" />;
+        default: return null;
+      }
     }
+    return null;
   };
 
   const getStatusText = (status: string, type: 'report' | 'equipment' | 'quote') => {
@@ -252,7 +324,7 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'regenerated': return 'Rigenerato';
         default: return status;
       }
-    } else {
+    } else if (type === 'quote') {
       switch (status) {
         case 'requested': return 'In Corso';
         case 'received': return 'Ricevuto';
@@ -260,6 +332,17 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
         case 'rejected': return 'KO';
         default: return status;
       }
+    } else if (type === 'project') {
+      switch (status) {
+        case 'open': return 'Aperto';
+        case 'defined': return 'Definito';
+        case 'in_progress': return 'In Corso';
+        case 'completed': return 'Concluso';
+        case 'discarded': return 'Scartato';
+        default: return status;
+      }
+    }
+    return status;
     }
   };
 
@@ -373,12 +456,35 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
                 <div className="bg-gradient-to-r from-green-100 to-green-50 rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-green-700">Valore Preventivi</p>
+                      <p className="text-xs font-medium text-green-700">Progetti Attivi</p>
+                      <p className="text-lg font-bold text-green-700">{farmData.stats.activeProjects}</p>
+                    </div>
+                    <FolderOpen size={20} className="text-green-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="bg-gradient-to-r from-purple-100 to-purple-50 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-purple-700">Valore Preventivi</p>
                       <p className="text-lg font-bold text-green-700">
                         €{farmData.stats.totalQuoteValue.toLocaleString()}
                       </p>
                     </div>
-                    <TrendingUp size={20} className="text-green-600" />
+                    <TrendingUp size={20} className="text-purple-600" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-blue-100 to-blue-50 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-blue-700">Valore Progetti</p>
+                      <p className="text-lg font-bold text-blue-700">
+                        €{farmData.stats.totalProjectsValue.toLocaleString()}
+                      </p>
+                    </div>
+                    <TrendingUp size={20} className="text-blue-600" />
                   </div>
                 </div>
               </div>
@@ -449,11 +555,24 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
                   <div className="text-2xl font-bold text-brand-coral">{selectedFarmData.stats.pendingQuotes}</div>
                   <div className="text-sm text-brand-gray">Preventivi Attivi</div>
                 </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-700">{selectedFarmData.stats.activeProjects}</div>
+                  <div className="text-sm text-brand-gray">Progetti Attivi</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-700">
                     €{selectedFarmData.stats.totalQuoteValue.toLocaleString()}
                   </div>
                   <div className="text-sm text-brand-gray">Valore Preventivi</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-700">
+                    €{selectedFarmData.stats.totalProjectsValue.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-brand-gray">Valore Progetti</div>
                 </div>
               </div>
             </div>
@@ -465,7 +584,8 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
                   {[
                     { id: 'reports', label: 'Segnalazioni', icon: ClipboardList, count: selectedFarmData.reports.length },
                     { id: 'equipment', label: 'Attrezzature', icon: Package, count: selectedFarmData.equipment.length },
-                    { id: 'quotes', label: 'Preventivi', icon: FileText, count: selectedFarmData.quotes.length }
+                    { id: 'quotes', label: 'Preventivi', icon: FileText, count: selectedFarmData.quotes.length },
+                    { id: 'projects', label: 'Progetti', icon: FolderOpen, count: selectedFarmData.projects.length }
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -713,6 +833,66 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
                         <FileText size={48} className="mx-auto text-brand-gray mb-4" />
                         <h3 className="text-lg font-medium text-brand-blue mb-2">Nessun preventivo</h3>
                         <p className="text-brand-gray">Non ci sono preventivi per questo allevamento.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Projects Tab */}
+                {activeTab === 'projects' && (
+                  <div className="space-y-4">
+                    {selectedFarmData.projects.length > 0 ? (
+                      selectedFarmData.projects.map((project) => (
+                        <div key={project.id} className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20 p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                {getStatusIcon(project.status, 'project')}
+                                <h4 className="font-semibold text-brand-blue">{project.title}</h4>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(project.status, 'project')}`}>
+                                  {getStatusText(project.status, 'project')}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="px-3 py-1 bg-brand-red/10 text-brand-red rounded-full text-sm font-bold">
+                                  {project.project_number}
+                                </span>
+                                <span className="text-sm text-brand-gray">{project.company}</span>
+                              </div>
+                              {project.description && (
+                                <p className="text-brand-gray text-sm mb-2">{project.description}</p>
+                              )}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="font-medium text-brand-blue">Creato da:</span>
+                                  <p className="text-brand-gray">{project.created_user_name}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-brand-blue">Preventivi:</span>
+                                  <p className="text-brand-gray font-semibold">{project.quotes_count || 0}</p>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-brand-blue">Valore:</span>
+                                  <p className="text-brand-gray font-semibold">
+                                    €{(project.total_quotes_value || 0).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <p className="text-xs text-brand-gray mt-2">
+                                Creato il {new Date(project.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
+                              <Eye size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <FolderOpen size={48} className="mx-auto text-brand-gray mb-4" />
+                        <h3 className="text-lg font-medium text-brand-blue mb-2">Nessun progetto</h3>
+                        <p className="text-brand-gray">Non ci sono progetti per questo allevamento.</p>
                       </div>
                     )}
                   </div>
