@@ -486,13 +486,6 @@ const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
                         {tab.count}
                       </span>
                     </button>
-                   <button 
-                     onClick={() => onNavigate('projects', { farmId: selectedFarmData.farm.id })}
-                     className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl"
-                   >
-                     <FolderOpen size={18} />
-                     <span>Progetti</span>
-                   </button>
                   ))}
                 </nav>
               </div>
