@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Quote {
@@ -47,6 +47,8 @@ const Quotes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -162,6 +164,81 @@ const Quotes: React.FC = () => {
       notes: ''
     });
     setShowCreateModal(false);
+  };
+
+  const handleEdit = (quote: Quote) => {
+    setFormData({
+      title: quote.title,
+      description: quote.description,
+      supplier_id: quote.supplier_id,
+      farm_id: quote.farm_id || '',
+      report_id: quote.report_id || '',
+      amount: quote.amount ? quote.amount.toString() : '',
+      due_date: quote.due_date || '',
+      notes: quote.notes || ''
+    });
+    setEditingQuote(quote);
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingQuote) return;
+    
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .update({
+          title: formData.title,
+          description: formData.description,
+          supplier_id: formData.supplier_id,
+          farm_id: formData.farm_id || null,
+          report_id: formData.report_id || null,
+          amount: formData.amount ? parseFloat(formData.amount) : null,
+          due_date: formData.due_date || null,
+          notes: formData.notes || null
+        })
+        .eq('id', editingQuote.id);
+
+      if (error) throw error;
+
+      await fetchData();
+      resetEditForm();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento preventivo:', error);
+      alert('Errore nell\'aggiornamento del preventivo');
+    }
+  };
+
+  const resetEditForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      supplier_id: '',
+      farm_id: '',
+      report_id: '',
+      amount: '',
+      due_date: '',
+      notes: ''
+    });
+    setEditingQuote(null);
+    setShowEditModal(false);
+  };
+
+  const updateQuoteStatus = async (quoteId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .update({ status: newStatus })
+        .eq('id', quoteId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento stato preventivo:', error);
+      alert('Errore nell\'aggiornamento dello stato');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -374,9 +451,47 @@ const Quotes: React.FC = () => {
                 <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
                   <Mail size={18} />
                 </button>
-                <button className="p-2 text-brand-gray hover:text-brand-coral transition-colors">
+                <button 
+                  onClick={() => handleEdit(quote)}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                  title="Modifica preventivo"
+                >
+                  <Edit size={18} />
+                </button>
+                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
                   <Calendar size={18} />
                 </button>
+              </div>
+              
+              {/* Status Change Buttons */}
+              <div className="mt-4 flex items-center space-x-2">
+                <span className="text-xs font-medium text-brand-blue">Azioni:</span>
+                <div className="flex space-x-1">
+                  {quote.status !== 'received' && (
+                    <button
+                      onClick={() => updateQuoteStatus(quote.id, 'received')}
+                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition-colors"
+                    >
+                      Ricevuto
+                    </button>
+                  )}
+                  {quote.status !== 'accepted' && (
+                    <button
+                      onClick={() => updateQuoteStatus(quote.id, 'accepted')}
+                      className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors"
+                    >
+                      Accetta
+                    </button>
+                  )}
+                  {quote.status !== 'rejected' && (
+                    <button
+                      onClick={() => updateQuoteStatus(quote.id, 'rejected')}
+                      className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition-colors"
+                    >
+                      Rifiuta
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -519,6 +634,149 @@ const Quotes: React.FC = () => {
                   className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
                 >
                   Crea Preventivo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingQuote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Modifica Preventivo</h2>
+            
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Titolo
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Descrizione
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Fornitore
+                  </label>
+                  <select
+                    required
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona fornitore</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Allevamento
+                  </label>
+                  <select
+                    value={formData.farm_id}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona allevamento</option>
+                    {farms.map(farm => (
+                      <option key={farm.id} value={farm.id}>{farm.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Segnalazione (opzionale)
+                  </label>
+                  <select
+                    value={formData.report_id}
+                    onChange={(e) => setFormData({ ...formData, report_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona segnalazione</option>
+                    {reports.map(report => (
+                      <option key={report.id} value={report.id}>{report.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Importo (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Scadenza
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Note (opzionale)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetEditForm}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
+                >
+                  Aggiorna Preventivo
                 </button>
               </div>
             </form>
