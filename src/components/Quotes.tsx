@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit, ShoppingCart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import OrderConfirmationModal from './OrderConfirmationModal';
 
 interface Quote {
   id: string;
@@ -49,6 +50,8 @@ const Quotes: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedQuoteForOrder, setSelectedQuoteForOrder] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -228,6 +231,16 @@ const Quotes: React.FC = () => {
 
   const updateQuoteStatus = async (quoteId: string, newStatus: string) => {
     try {
+      // If accepting a quote, show order confirmation modal instead
+      if (newStatus === 'accepted') {
+        const quote = quotes.find(q => q.id === quoteId);
+        if (quote) {
+          setSelectedQuoteForOrder(quote);
+          setShowOrderModal(true);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from('quotes')
         .update({ status: newStatus })
@@ -238,6 +251,20 @@ const Quotes: React.FC = () => {
     } catch (error) {
       console.error('Errore nell\'aggiornamento stato preventivo:', error);
       alert('Errore nell\'aggiornamento dello stato');
+    }
+  };
+
+  const handleOrderConfirmation = async (orderData: any) => {
+    try {
+      // Refresh quotes data to see the updated statuses
+      await fetchData();
+      setShowOrderModal(false);
+      setSelectedQuoteForOrder(null);
+      
+      alert(`Ordine ${orderData.order_number} creato con successo!\n\nGli altri preventivi con lo stesso oggetto sono stati automaticamente rifiutati.`);
+    } catch (error) {
+      console.error('Errore nella gestione conferma ordine:', error);
+      alert('Errore nella gestione della conferma ordine');
     }
   };
 
@@ -478,9 +505,10 @@ const Quotes: React.FC = () => {
                   {quote.status !== 'accepted' && (
                     <button
                       onClick={() => updateQuoteStatus(quote.id, 'accepted')}
-                      className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors"
+                      className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors flex items-center space-x-1"
                     >
-                      Accetta
+                      <ShoppingCart size={12} />
+                      <span>Conferma Ordine</span>
                     </button>
                   )}
                   {quote.status !== 'rejected' && (
@@ -782,6 +810,18 @@ const Quotes: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Order Confirmation Modal */}
+      {showOrderModal && selectedQuoteForOrder && (
+        <OrderConfirmationModal
+          quote={selectedQuoteForOrder}
+          onClose={() => {
+            setShowOrderModal(false);
+            setSelectedQuoteForOrder(null);
+          }}
+          onConfirm={handleOrderConfirmation}
+        />
       )}
 
       {filteredQuotes.length === 0 && (

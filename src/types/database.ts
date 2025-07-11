@@ -298,6 +298,56 @@ export interface Database {
           created_by?: string;
         };
       };
+      order_confirmations: {
+        Row: {
+          id: string;
+          quote_id: string;
+          order_number: string;
+          company: string;
+          sequential_number: number;
+          farm_id: string;
+          supplier_id: string;
+          total_amount: number;
+          order_date: string;
+          delivery_date: string | null;
+          notes: string | null;
+          status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+          created_at: string;
+          created_by: string;
+        };
+        Insert: {
+          id?: string;
+          quote_id: string;
+          order_number: string;
+          company: string;
+          sequential_number: number;
+          farm_id: string;
+          supplier_id: string;
+          total_amount: number;
+          order_date?: string;
+          delivery_date?: string | null;
+          notes?: string | null;
+          status?: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+          created_at?: string;
+          created_by: string;
+        };
+        Update: {
+          id?: string;
+          quote_id?: string;
+          order_number?: string;
+          company?: string;
+          sequential_number?: number;
+          farm_id?: string;
+          supplier_id?: string;
+          total_amount?: number;
+          order_date?: string;
+          delivery_date?: string | null;
+          notes?: string | null;
+          status?: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+          created_at?: string;
+          created_by?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
