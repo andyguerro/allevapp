@@ -162,34 +162,37 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
   const generateWordDocument = () => {
     if (!previewOrder) return;
 
-    // Create Word document content based on company
+    // Modelli di conferma d'ordine personalizzati per ciascuna azienda
     const companyTemplates = {
       'Zoogamma Spa': {
         letterhead: 'ZOOGAMMA SPA',
-        address: 'Via Example 123, Milano, Italia',
-        phone: '+39 02 123456789',
-        email: 'ordini@zoogamma.it',
-        color: '#E31E24'
+        address: 'Via Trento 3, 25025 Manerbio (BS)',
+        phone: '+39 030 9938433',
+        email: 'ordini@zoogammma.it',
+        color: '#E31E24',
+        logo: '/ZooG.png'
       },
       'So. Agr. Zooagri Srl': {
         letterhead: 'SO. AGR. ZOOAGRI SRL',
-        address: 'Via Agricola 456, Bergamo, Italia', 
-        phone: '+39 035 987654321',
+        address: 'Via Trento 3, 25025 Manerbio (BS)', 
+        phone: '+39 030 9938433',
         email: 'ordini@zooagri.it',
-        color: '#1E3A8A'
+        color: '#1E3A8A',
+        logo: '/ZooG.png'
       },
       'Soc. Agr. Zooallevamenti Srl': {
         letterhead: 'SOC. AGR. ZOOALLEVAMENTI SRL',
-        address: 'Via Allevamento 789, Brescia, Italia',
-        phone: '+39 030 456789123', 
+        address: 'Via Trento 3, 25025 Manerbio (BS)',
+        phone: '+39 030 9938433', 
         email: 'ordini@zooallevamenti.it',
-        color: '#059669'
+        color: '#059669',
+        logo: '/ZooG.png'
       }
     };
 
     const template = companyTemplates[previewOrder.company as keyof typeof companyTemplates];
 
-    // Generate HTML content for Word document
+    // Genera contenuto HTML per il documento Word basato sul modello fornito
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -197,59 +200,175 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
           <meta charset="utf-8">
           <title>Conferma Ordine ${previewOrder.order_number}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            .header { text-align: center; border-bottom: 3px solid ${template.color}; padding-bottom: 20px; margin-bottom: 30px; }
-            .company-name { font-size: 24px; font-weight: bold; color: ${template.color}; margin-bottom: 10px; }
-            .company-info { font-size: 12px; color: #666; }
-            .order-title { font-size: 20px; font-weight: bold; color: ${template.color}; margin: 30px 0 20px 0; }
-            .order-number { font-size: 18px; font-weight: bold; background: ${template.color}; color: white; padding: 10px; text-align: center; margin-bottom: 30px; }
-            .section { margin-bottom: 25px; }
-            .section-title { font-size: 14px; font-weight: bold; color: ${template.color}; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-            .info-item { margin-bottom: 8px; }
-            .label { font-weight: bold; color: #333; }
-            .value { color: #666; }
-            .amount { font-size: 18px; font-weight: bold; color: ${template.color}; }
-            .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; text-align: center; }
-            .signature-section { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
-            .signature-box { text-align: center; }
-            .signature-line { border-bottom: 1px solid #333; margin-bottom: 5px; height: 50px; }
+            @page {
+              size: 21cm 29.7cm;
+              margin: 2cm;
+            }
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 0;
+              line-height: 1.5;
+              color: #333;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 3px solid ${template.color};
+              padding-bottom: 15px;
+              margin-bottom: 30px;
+            }
+            .logo-container {
+              width: 80px;
+            }
+            .logo {
+              max-width: 100%;
+              height: auto;
+            }
+            .company-details {
+              text-align: right;
+            }
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: ${template.color};
+              margin-bottom: 5px;
+            }
+            .company-info {
+              font-size: 11px;
+              color: #666;
+              line-height: 1.3;
+            }
+            .document-title {
+              text-align: center;
+              margin: 30px 0;
+            }
+            .order-title {
+              font-size: 22px;
+              font-weight: bold;
+              color: ${template.color};
+              margin: 0;
+              text-transform: uppercase;
+            }
+            .order-number {
+              font-size: 18px;
+              font-weight: bold;
+              background: ${template.color};
+              color: white;
+              padding: 8px 15px;
+              text-align: center;
+              margin: 15px auto 30px;
+              display: inline-block;
+            }
+            .section {
+              margin-bottom: 25px;
+            }
+            .section-title {
+              font-size: 14px;
+              font-weight: bold;
+              color: ${template.color};
+              border-bottom: 1px solid #ddd;
+              padding-bottom: 5px;
+              margin-bottom: 10px;
+              text-transform: uppercase;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+            }
+            .info-item {
+              margin-bottom: 8px;
+            }
+            .label {
+              font-weight: bold;
+              color: #333;
+              display: block;
+              margin-bottom: 3px;
+            }
+            .value {
+              color: #444;
+            }
+            .amount {
+              font-size: 18px;
+              font-weight: bold;
+              color: ${template.color};
+            }
+            .notes-section {
+              background-color: #f9f9f9;
+              padding: 15px;
+              border: 1px solid #eee;
+              border-radius: 5px;
+              margin-top: 20px;
+            }
+            .footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              font-size: 11px;
+              color: #666;
+              text-align: center;
+            }
+            .signature-section {
+              margin-top: 60px;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 50px;
+            }
+            .signature-box {
+              text-align: center;
+            }
+            .signature-line {
+              border-bottom: 1px solid #333;
+              margin-bottom: 5px;
+              height: 40px;
+            }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="company-name">${template.letterhead}</div>
-            <div class="company-info">
-              ${template.address}<br>
-              Tel: ${template.phone} | Email: ${template.email}
+          <header class="header">
+            <div class="logo-container">
+              <img src="${template.logo}" alt="${template.letterhead}" class="logo">
             </div>
-          </div>
+            <div class="company-details">
+              <div class="company-name">${template.letterhead}</div>
+              <div class="company-info">
+                ${template.address}<br>
+                Tel: ${template.phone}<br>
+                Email: ${template.email}<br>
+                P.IVA: 00633870981
+              </div>
+            </div>
+          </header>
 
-          <div class="order-title">CONFERMA ORDINE</div>
-          <div class="order-number">Ordine N. ${previewOrder.order_number}</div>
+          <div class="document-title">
+            <h1 class="order-title">Conferma Ordine</h1>
+            <div class="order-number">N. ${previewOrder.order_number}</div>
+          </div>
 
           <div class="info-grid">
             <div class="section">
-              <div class="section-title">DATI FORNITORE</div>
+              <div class="section-title">Dati Fornitore</div>
               <div class="info-item">
-                <span class="label">Ragione Sociale:</span><br>
+                <span class="label">Ragione Sociale:</span>
                 <span class="value">${quote.supplier_name}</span>
               </div>
               <div class="info-item">
-                <span class="label">Email:</span><br>
+                <span class="label">Email:</span>
                 <span class="value">${quote.supplier_email}</span>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">DATI ORDINE</div>
+              <div class="section-title">Dati Ordine</div>
               <div class="info-item">
-                <span class="label">Data Ordine:</span><br>
+                <span class="label">Data Ordine:</span>
                 <span class="value">${new Date(previewOrder.order_date).toLocaleDateString('it-IT')}</span>
               </div>
               ${previewOrder.delivery_date ? `
                 <div class="info-item">
-                  <span class="label">Data Consegna Richiesta:</span><br>
+                  <span class="label">Data Consegna Richiesta:</span>
                   <span class="value">${new Date(previewOrder.delivery_date).toLocaleDateString('it-IT')}</span>
                 </div>
               ` : ''}
@@ -257,32 +376,32 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
           </div>
 
           <div class="section">
-            <div class="section-title">DETTAGLI FORNITURA</div>
+            <div class="section-title">Dettagli Fornitura</div>
             <div class="info-item">
-              <span class="label">Oggetto:</span><br>
+              <span class="label">Oggetto:</span>
               <span class="value">${quote.title}</span>
             </div>
             <div class="info-item">
-              <span class="label">Descrizione:</span><br>
+              <span class="label">Descrizione:</span>
               <span class="value">${quote.description}</span>
             </div>
             <div class="info-item">
-              <span class="label">Allevamento:</span><br>
+              <span class="label">Allevamento:</span>
               <span class="value">${quote.farm_name}</span>
             </div>
           </div>
 
           <div class="section">
-            <div class="section-title">IMPORTO</div>
+            <div class="section-title">Importo</div>
             <div class="info-item">
-              <span class="label">Totale Ordine:</span><br>
+              <span class="label">Totale Ordine:</span>
               <span class="amount">€ ${previewOrder.total_amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
           ${previewOrder.notes ? `
-            <div class="section">
-              <div class="section-title">NOTE</div>
+            <div class="section notes-section">
+              <div class="section-title">Note</div>
               <div class="value">${previewOrder.notes}</div>
             </div>
           ` : ''}
@@ -290,30 +409,30 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
           <div class="signature-section">
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div><strong>Firma ${template.letterhead}</strong></div>
+              <div><strong>Firma e Timbro ${template.letterhead}</strong></div>
               <div>Data: _______________</div>
             </div>
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div><strong>Firma Fornitore</strong></div>
+              <div><strong>Firma e Timbro Fornitore</strong></div>
               <div>Data: _______________</div>
             </div>
           </div>
 
           <div class="footer">
-            Documento generato automaticamente dal sistema AllevApp<br>
-            ${template.letterhead} - ${new Date().toLocaleDateString('it-IT')}
+            <p>Documento generato automaticamente dal sistema AllevApp - ${new Date().toLocaleDateString('it-IT')}</p>
+            <p>${template.letterhead} - ${template.address} - Tel: ${template.phone}</p>
           </div>
         </body>
       </html>
     `;
 
-    // Create and download the document
+    // Crea e scarica il documento
     const blob = new Blob([htmlContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Conferma_Ordine_${previewOrder.order_number}.doc`;
+    a.download = `Conferma_Ordine_${previewOrder.order_number}_${quote.title.replace(/\s+/g, '_')}.doc`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
