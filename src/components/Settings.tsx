@@ -118,6 +118,20 @@ const Settings: React.FC = () => {
     try {
       console.log('Submitting farm data:', farmFormData);
       
+      // Get a default user ID from the users table
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.error('No active user found:', userError);
+        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
+        return;
+      }
+
       if (editingFarm) {
         // Update existing farm
         const { error } = await supabase
@@ -136,7 +150,8 @@ const Settings: React.FC = () => {
           .from('farms')
           .insert({
             name: farmFormData.name,
-            address: farmFormData.address || null
+            address: farmFormData.address || null,
+            created_by: defaultUser.id
           });
 
         if (error) throw error;
@@ -147,7 +162,7 @@ const Settings: React.FC = () => {
       resetFarmForm();
     } catch (error) {
       console.error('Errore nel salvare allevamento:', error);
-      alert('Errore nel salvare l\'allevamento');
+      alert(`Errore nel salvare l'allevamento: ${error.message}`);
     }
   };
 
