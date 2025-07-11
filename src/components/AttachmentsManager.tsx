@@ -97,6 +97,14 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
 
     setUploading(true);
     try {
+      // Get the current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        alert('Devi essere autenticato per caricare file');
+        return;
+      }
+
       // Genera un nome file unico
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -123,7 +131,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
           custom_label: customLabel || selectedFile.name,
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
-          created_by: 'sistema' // In un'app reale, useresti l'ID dell'utente autenticato
+          created_by: user.id
         });
 
       if (dbError) throw dbError;
