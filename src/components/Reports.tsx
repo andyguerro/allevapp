@@ -28,6 +28,7 @@ interface Report {
   // Joined data
   farm_name?: string;
   equipment_name?: string;
+  supplier_name?: string;
   assigned_user_name?: string;
   created_user_name?: string;
 }
@@ -65,6 +66,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     urgency: initialFilters?.filterUrgency ? [{ value: initialFilters.filterUrgency, label: getUrgencyText(initialFilters.filterUrgency) }] : [],
     farm: [],
     equipment: [],
+    supplier: [],
     assigned_to: []
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -84,6 +86,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     description: '',
     farm_id: '',
     equipment_id: '',
+    supplier_id: '',
     assigned_to: '',
     urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
     notes: ''
@@ -110,6 +113,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           *,
           farms(name),
           equipment(name),
+          suppliers(name),
           assigned_user:users!reports_assigned_to_fkey(full_name),
           created_user:users!reports_created_by_fkey(full_name)
         `)
@@ -122,6 +126,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
         ...report,
         farm_name: report.farms?.name,
         equipment_name: report.equipment?.name,
+        supplier_name: report.suppliers?.name,
         assigned_user_name: report.assigned_user?.full_name,
         created_user_name: report.created_user?.full_name
       }));
@@ -191,6 +196,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
         label: user.full_name
       }));
 
+      const supplierOptions: Option[] = suppliersData.map(supplier => ({
+        value: supplier.id,
+        label: supplier.name
+      }));
+
       setFilterOptions([
         {
           id: 'status',
@@ -211,6 +221,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           id: 'equipment',
           label: 'Attrezzatura',
           options: equipmentOptions
+        },
+        {
+          id: 'supplier',
+          label: 'Fornitore',
+          options: supplierOptions
         },
         {
           id: 'assigned_to',
@@ -245,6 +260,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           description: formData.description,
           farm_id: formData.farm_id,
           equipment_id: formData.equipment_id || null,
+          supplier_id: formData.supplier_id || null,
           assigned_to: formData.assigned_to,
           created_by: createdBy,
           urgency: formData.urgency,
@@ -267,6 +283,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       description: report.description,
       farm_id: report.farm_id,
       equipment_id: report.equipment_id || '',
+      supplier_id: report.supplier_id || '',
       assigned_to: report.assigned_to,
       urgency: report.urgency,
       notes: report.notes || ''
@@ -288,6 +305,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           description: formData.description,
           farm_id: formData.farm_id,
           equipment_id: formData.equipment_id || null,
+          supplier_id: formData.supplier_id || null,
           assigned_to: formData.assigned_to,
           urgency: formData.urgency,
           notes: formData.notes || null
@@ -310,6 +328,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       description: '',
       farm_id: '',
       equipment_id: '',
+      supplier_id: '',
       assigned_to: '',
       urgency: 'medium',
       notes: ''
@@ -323,6 +342,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       description: '',
       farm_id: '',
       equipment_id: '',
+      supplier_id: '',
       assigned_to: '',
       urgency: 'medium',
       notes: ''
@@ -467,6 +487,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       urgency: [],
       farm: [],
       equipment: [],
+      supplier: [],
       assigned_to: []
     });
     setSearchTerm('');
@@ -526,7 +547,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.farm_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.equipment_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                         report.equipment_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         report.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedFilters.status.length === 0 || 
                           selectedFilters.status.some(option => option.value === report.status);
@@ -540,10 +562,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     const matchesEquipment = selectedFilters.equipment.length === 0 || 
                              (report.equipment_id && selectedFilters.equipment.some(option => option.value === report.equipment_id));
     
+    const matchesSupplier = selectedFilters.supplier.length === 0 || 
+                            (report.supplier_id && selectedFilters.supplier.some(option => option.value === report.supplier_id));
+    
     const matchesAssignedTo = selectedFilters.assigned_to.length === 0 || 
                               selectedFilters.assigned_to.some(option => option.value === report.assigned_to);
     
-    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesEquipment && matchesAssignedTo;
+    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesEquipment && matchesSupplier && matchesAssignedTo;
   });
 
   if (loading) {
@@ -678,6 +703,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                   <div>
                     <span className="font-medium text-brand-blue">Attrezzatura:</span>
                     <p className="text-brand-gray">{report.equipment_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-brand-blue">Fornitore:</span>
+                    <p className="text-brand-gray">{report.supplier_name || 'N/A'}</p>
                   </div>
                   <div>
                     <span className="font-medium text-brand-blue">Assegnato a:</span>
@@ -847,6 +876,22 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Fornitore (opzionale)
+                  </label>
+                  <select
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona fornitore</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -979,6 +1024,22 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     <option value="">Seleziona attrezzatura</option>
                     {equipment.map(eq => (
                       <option key={eq.id} value={eq.id}>{eq.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Fornitore (opzionale)
+                  </label>
+                  <select
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona fornitore</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
                     ))}
                   </select>
                 </div>
