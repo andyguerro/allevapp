@@ -36,9 +36,18 @@ interface Report {
   title: string;
 }
 
+interface Project {
+  id: string;
+  title: string;
+  project_number: string;
+  company: string;
+  farm_id: string;
+}
+
 interface Farm {
   id: string;
   name: string;
+  company: string;
 }
 
 const Quotes: React.FC = () => {
@@ -46,6 +55,7 @@ const Quotes: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, Option[]>>({
     status: [],
@@ -68,7 +78,7 @@ const Quotes: React.FC = () => {
     supplier_id: '',
     farm_id: '',
     report_id: '',
-    project_code: '',
+    project_id: '',
     amount: '',
     due_date: '',
     notes: ''
@@ -124,10 +134,19 @@ const Quotes: React.FC = () => {
       // Fetch farms
       const { data: farmsData, error: farmsError } = await supabase
         .from('farms')
-        .select('id, name');
+        .select('id, name, company');
 
       if (farmsError) throw farmsError;
       setFarms(farmsData);
+
+      // Fetch projects
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, title, project_number, company, farm_id')
+        .in('status', ['open', 'defined', 'in_progress']);
+
+      if (projectsError) throw projectsError;
+      setProjects(projectsData);
 
       // Prepare filter options
       const statusOptions: Option[] = [
@@ -175,11 +194,14 @@ const Quotes: React.FC = () => {
     e.preventDefault();
     
     try {
-      // Prepara le note includendo il codice progetto se specificato
+      // Prepara le note includendo il progetto se specificato
       let notes = formData.notes || null;
-      if (formData.project_code.trim()) {
-        const projectNote = `Progetto: ${formData.project_code.trim()}`;
-        notes = notes ? `${projectNote}\n${notes}` : projectNote;
+      if (formData.project_id) {
+        const selectedProject = projects.find(p => p.id === formData.project_id);
+        if (selectedProject) {
+          const projectNote = `Progetto: ${selectedProject.project_number} - ${selectedProject.title}`;
+          notes = notes ? `${projectNote}\n${notes}` : projectNote;
+        }
       }
 
       const { error } = await supabase
@@ -190,6 +212,7 @@ const Quotes: React.FC = () => {
           supplier_id: formData.supplier_id,
           farm_id: formData.farm_id || null,
           report_id: formData.report_id || null,
+          project_id: formData.project_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
           notes: notes,
@@ -213,7 +236,7 @@ const Quotes: React.FC = () => {
       supplier_id: '',
       farm_id: '',
       report_id: '',
-      project_code: '',
+      project_id: '',
       amount: '',
       due_date: '',
       notes: ''
@@ -222,13 +245,26 @@ const Quotes: React.FC = () => {
   };
 
   const handleEdit = (quote: Quote) => {
+    // Estrai project_id dalle note se presente
+    let projectId = '';
+    if (quote.notes?.includes('Progetto:')) {
+      const projectLine = quote.notes.split('\n')[0];
+      const projectNumber = projectLine.split('Progetto: ')[1]?.split(' - ')[0];
+      if (projectNumber) {
+        const project = projects.find(p => p.project_number === projectNumber);
+        if (project) {
+          projectId = project.id;
+        }
+      }
+    }
+
     setFormData({
       title: quote.title,
       description: quote.description,
       supplier_id: quote.supplier_id,
       farm_id: quote.farm_id || '',
       report_id: quote.report_id || '',
-      project_code: quote.notes?.includes('Progetto:') ? quote.notes.split('Progetto: ')[1]?.split('\n')[0] || '' : '',
+      project_id: projectId,
       amount: quote.amount ? quote.amount.toString() : '',
       due_date: quote.due_date || '',
       notes: quote.notes?.replace(/Progetto: [^\n]*\n?/, '') || ''
@@ -243,11 +279,14 @@ const Quotes: React.FC = () => {
     if (!editingQuote) return;
     
     try {
-      // Prepara le note includendo il codice progetto se specificato
+      // Prepara le note includendo il progetto se specificato
       let notes = formData.notes || null;
-      if (formData.project_code.trim()) {
-        const projectNote = `Progetto: ${formData.project_code.trim()}`;
-        notes = notes ? `${projectNote}\n${notes}` : projectNote;
+      if (formData.project_id) {
+        const selectedProject = projects.find(p => p.id === formData.project_id);
+        if (selectedProject) {
+          const projectNote = `Progetto: ${selectedProject.project_number} - ${selectedProject.title}`;
+          notes = notes ? `${projectNote}\n${notes}` : projectNote;
+        }
       }
 
       const { error } = await supabase
@@ -258,6 +297,7 @@ const Quotes: React.FC = () => {
           supplier_id: formData.supplier_id,
           farm_id: formData.farm_id || null,
           report_id: formData.report_id || null,
+          project_id: formData.project_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
           notes: notes
@@ -281,7 +321,7 @@ const Quotes: React.FC = () => {
       supplier_id: '',
       farm_id: '',
       report_id: '',
-      project_code: '',
+      project_id: '',
       amount: '',
       due_date: '',
       notes: ''
@@ -393,6 +433,16 @@ const Quotes: React.FC = () => {
 
   const isOverdue = (dueDate: string) => {
     return new Date(dueDate) < new Date();
+  };
+
+  // Filtra progetti in base all'allevamento selezionato
+  const getAvailableProjects = () => {
+    if (!formData.farm_id) return [];
+    
+    const selectedFarm = farms.find(f => f.id === formData.farm_id);
+    if (!selectedFarm) return [];
+    
+    return projects.filter(p => p.company === selectedFarm.company);
   };
 
   if (loading) {
@@ -681,17 +731,25 @@ const Quotes: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Codice Progetto (opzionale)
+                    Progetto (opzionale)
                   </label>
-                  <input
-                    type="text"
-                    value={formData.project_code}
-                    onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
-                    placeholder="Es: ZG-2025-001"
+                  <select
+                    value={formData.project_id}
+                    onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  />
+                  >
+                    <option value="">Seleziona progetto</option>
+                    {getAvailableProjects().map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.project_number} - {project.title}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-xs text-brand-gray mt-1">
-                    Inserisci il codice del progetto se questo preventivo è collegato a un progetto specifico
+                    {formData.farm_id 
+                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.company || 'questa azienda'}`
+                      : 'Seleziona prima un allevamento per vedere i progetti disponibili'
+                    }
                   </p>
                 </div>
               </div>
@@ -840,17 +898,25 @@ const Quotes: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Codice Progetto (opzionale)
+                    Progetto (opzionale)
                   </label>
-                  <input
-                    type="text"
-                    value={formData.project_code}
-                    onChange={(e) => setFormData({ ...formData, project_code: e.target.value })}
-                    placeholder="Es: ZG-2025-001"
+                  <select
+                    value={formData.project_id}
+                    onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  />
+                  >
+                    <option value="">Seleziona progetto</option>
+                    {getAvailableProjects().map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.project_number} - {project.title}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-xs text-brand-gray mt-1">
-                    Inserisci il codice del progetto se questo preventivo è collegato a un progetto specifico
+                    {formData.farm_id 
+                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.company || 'questa azienda'}`
+                      : 'Seleziona prima un allevamento per vedere i progetti disponibili'
+                    }
                   </p>
                 </div>
               </div>
