@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit, ShoppingCart } from 'lucide-react';
+import { Plus, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit, ShoppingCart } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import OrderConfirmationModal from './OrderConfirmationModal';
+import SearchFilters, { Option } from './SearchFilters';
 
 interface Quote {
   id: string;
@@ -46,13 +47,20 @@ const Quotes: React.FC = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, Option[]>>({
+    status: [],
+    supplier: [],
+    farm: []
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedQuoteForOrder, setSelectedQuoteForOrder] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Prepare filter options
+  const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -120,6 +128,41 @@ const Quotes: React.FC = () => {
       if (farmsError) throw farmsError;
       setFarms(farmsData);
 
+      // Prepare filter options
+      const statusOptions: Option[] = [
+        { value: 'requested', label: 'Richiesto' },
+        { value: 'received', label: 'Ricevuto' },
+        { value: 'accepted', label: 'Accettato' },
+        { value: 'rejected', label: 'Rifiutato' }
+      ];
+
+      const supplierOptions: Option[] = suppliersData.map(supplier => ({
+        value: supplier.id,
+        label: supplier.name
+      }));
+
+      const farmOptions: Option[] = farmsData.map(farm => ({
+        value: farm.id,
+        label: farm.name
+      }));
+
+      setFilterOptions([
+        {
+          id: 'status',
+          label: 'Stato',
+          options: statusOptions
+        },
+        {
+          id: 'supplier',
+          label: 'Fornitore',
+          options: supplierOptions
+        },
+        {
+          id: 'farm',
+          label: 'Allevamento',
+          options: farmOptions
+        }
+      ]);
     } catch (error) {
       console.error('Errore nel caricamento dati:', error);
     } finally {
@@ -268,6 +311,19 @@ const Quotes: React.FC = () => {
     }
   };
 
+  const handleFilterChange = (filterId: string, selected: Option[]) => {
+    setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedFilters({
+      status: [],
+      supplier: [],
+      farm: []
+    });
+    setSearchTerm('');
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'requested': return 'bg-brand-coral/20 text-brand-coral border-brand-coral/30';
@@ -301,8 +357,19 @@ const Quotes: React.FC = () => {
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || quote.status === filterStatus;
+                         quote.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote.farm_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = selectedFilters.status.length === 0 || 
+                          selectedFilters.status.some(option => option.value === quote.status);
+    
+    const matchesSupplier = selectedFilters.supplier.length === 0 || 
+                            selectedFilters.supplier.some(option => option.value === quote.supplier_id);
+    
+    const matchesFarm = selectedFilters.farm.length === 0 || 
+                        (quote.farm_id && selectedFilters.farm.some(option => option.value === quote.farm_id));
+    
+    const matchesStatus = matchesStatus && matchesSupplier && matchesFarm;
     return matchesSearch && matchesStatus;
   });
 
@@ -380,36 +447,15 @@ const Quotes: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-gray" size={18} />
-              <input
-                type="text"
-                placeholder="Cerca preventivi..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter size={18} className="text-brand-gray" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
-            >
-              <option value="all">Tutti</option>
-              <option value="requested">Richiesti</option>
-              <option value="received">Ricevuti</option>
-              <option value="accepted">Accettati</option>
-              <option value="rejected">Rifiutati</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <SearchFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filterOptions}
+        selectedFilters={selectedFilters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={clearAllFilters}
+        placeholder="Cerca preventivi..."
+      />
 
       {/* Quotes List */}
       <div className="space-y-4">

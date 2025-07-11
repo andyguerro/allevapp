@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Package, Plus, Edit, Eye, AlertTriangle, Paperclip } from 'lucide-react';
+import { Package, Plus, Edit, Eye, AlertTriangle, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
+import SearchFilters, { Option } from './SearchFilters';
 
 interface EquipmentProps {
   initialFilters?: {
@@ -34,14 +35,19 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState(initialFilters.filterStatus || 'all');
-  const [filterFarm, setFilterFarm] = useState('all');
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, Option[]>>({
+    status: initialFilters?.filterStatus ? [{ value: initialFilters.filterStatus, label: getStatusText(initialFilters.filterStatus) }] : [],
+    farm: []
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [selectedEquipmentName, setSelectedEquipmentName] = useState<string>('');
   const [loading, setLoading] = useState(true);
+
+  // Prepare filter options
+  const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -61,8 +67,8 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
 
   // Apply initial filters when component mounts
   useEffect(() => {
-    if (initialFilters.filterStatus) {
-      setFilterStatus(initialFilters.filterStatus);
+    if (initialFilters?.filterStatus) {
+      // Already handled in useState initialization
     }
   }, [initialFilters]);
 
@@ -95,6 +101,31 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       if (farmsError) throw farmsError;
       setFarms(farmsData);
 
+      // Prepare filter options
+      const statusOptions: Option[] = [
+        { value: 'working', label: 'Funzionante' },
+        { value: 'not_working', label: 'Non Funzionante' },
+        { value: 'repaired', label: 'Riparato' },
+        { value: 'regenerated', label: 'Rigenerato' }
+      ];
+
+      const farmOptions: Option[] = farmsData.map(farm => ({
+        value: farm.id,
+        label: farm.name
+      }));
+
+      setFilterOptions([
+        {
+          id: 'status',
+          label: 'Stato',
+          options: statusOptions
+        },
+        {
+          id: 'farm',
+          label: 'Allevamento',
+          options: farmOptions
+        }
+      ]);
     } catch (error) {
       console.error('Errore nel caricamento dati:', error);
     } finally {
@@ -247,6 +278,18 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
     return daysDiff >= 0 && daysDiff <= 7;
   };
 
+  const handleFilterChange = (filterId: string, selected: Option[]) => {
+    setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedFilters({
+      status: [],
+      farm: []
+    });
+    setSearchTerm('');
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'working': return 'bg-brand-blue/20 text-brand-blue border-brand-blue/30';
@@ -269,10 +312,15 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
 
   const filteredEquipment = equipment.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
-    const matchesFarm = filterFarm === 'all' || item.farm_id === filterFarm;
+                          item.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = selectedFilters.status.length === 0 || 
+                          selectedFilters.status.some(option => option.value === item.status);
+    
+    const matchesFarm = selectedFilters.farm.length === 0 || 
+                        selectedFilters.farm.some(option => option.value === item.farm_id);
+    
     return matchesSearch && matchesStatus && matchesFarm;
   });
 
@@ -298,17 +346,17 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       </div>
 
       {/* Active Filters Indicator */}
-      {filterStatus !== 'all' && (
+      {selectedFilters.status.length > 0 && (
         <div className="bg-brand-blue/10 border border-brand-blue/20 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-brand-blue">Filtro attivo:</span>
               <span className="px-2 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-xs">
-                Stato: {getStatusText(filterStatus)}
+                Stato: {selectedFilters.status.map(s => s.label).join(', ')}
               </span>
             </div>
             <button
-              onClick={() => setFilterStatus('all')}
+              onClick={() => setSelectedFilters(prev => ({ ...prev, status: [] }))}
               className="text-sm text-brand-gray hover:text-brand-blue transition-colors"
             >
               Rimuovi filtro
@@ -364,48 +412,15 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-gray" size={18} />
-              <input
-                type="text"
-                placeholder="Cerca attrezzature..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter size={18} className="text-brand-gray" />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
-              >
-                <option value="all">Tutti gli stati</option>
-                <option value="working">Funzionante</option>
-                <option value="not_working">Non Funzionante</option>
-                <option value="repaired">Riparato</option>
-                <option value="regenerated">Rigenerato</option>
-              </select>
-            </div>
-            <select
-              value={filterFarm}
-              onChange={(e) => setFilterFarm(e.target.value)}
-              className="px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
-            >
-              <option value="all">Tutti gli allevamenti</option>
-              {farms.map(farm => (
-                <option key={farm.id} value={farm.id}>{farm.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
+      <SearchFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filters={filterOptions}
+        selectedFilters={selectedFilters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={clearAllFilters}
+        placeholder="Cerca attrezzature..."
+      />
 
       {/* Equipment Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
