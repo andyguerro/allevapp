@@ -53,7 +53,11 @@ interface FarmData {
   };
 }
 
-const FarmsManagement: React.FC = () => {
+interface FarmsManagementProps {
+  onNavigate: (page: string, filters?: any) => void;
+}
+
+const FarmsManagement: React.FC<FarmsManagementProps> = ({ onNavigate }) => {
   const [farmsData, setFarmsData] = useState<FarmData[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'reports' | 'equipment' | 'quotes'>('reports');

@@ -32,7 +32,7 @@ const App: React.FC = () => {
       case 'quotes':
         return <Quotes />;
       case 'farms':
-        return <FarmsManagement />;
+        return <FarmsManagement onNavigate={handleNavigate} />;
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
