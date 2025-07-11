@@ -192,9 +192,9 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      let createdBy = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'; // Default fallback
-      if (user) {
-        createdBy = user.id;
+      if (userError || !user) {
+        alert('Devi essere autenticato per creare un progetto');
+        return;
       }
 
       const { error } = await supabase
@@ -204,7 +204,7 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
           description: formData.description || null,
           farm_id: formData.farm_id,
           status: formData.status,
-          created_by: createdBy
+          created_by: user.id
         });
 
       if (error) throw error;
