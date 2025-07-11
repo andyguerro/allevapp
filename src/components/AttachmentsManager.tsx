@@ -32,8 +32,10 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
+  const [showEditLabelModal, setShowEditLabelModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [customLabel, setCustomLabel] = useState('');
+  const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -144,6 +146,33 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
     } finally {
       setUploading(false);
     }
+  };
+
+  const updateAttachmentLabel = async () => {
+    if (!editingAttachment) return;
+
+    try {
+      const { error } = await supabase
+        .from('attachments')
+        .update({ custom_label: customLabel })
+        .eq('id', editingAttachment.id);
+
+      if (error) throw error;
+
+      await fetchAttachments();
+      setShowEditLabelModal(false);
+      setEditingAttachment(null);
+      setCustomLabel('');
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento etichetta:', error);
+      alert('Errore nell\'aggiornamento dell\'etichetta');
+    }
+  };
+
+  const startEditLabel = (attachment: Attachment) => {
+    setEditingAttachment(attachment);
+    setCustomLabel(attachment.custom_label || attachment.file_name);
+    setShowEditLabelModal(true);
   };
 
   const deleteAttachment = async (attachmentId: string, filePath: string) => {
@@ -339,6 +368,13 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                       </div>
                       <div className="flex items-center space-x-2 ml-2">
                         <button
+                          onClick={() => startEditLabel(attachment)}
+                          className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                          title="Modifica etichetta"
+                        >
+                          <Tag size={16} />
+                        </button>
+                        <button
                           onClick={() => downloadFile(attachment.file_path, attachment.file_name)}
                           className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
                           title="Scarica file"
@@ -415,6 +451,58 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                   className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {uploading ? 'Caricamento...' : 'Carica File'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Label Modal */}
+        {showEditLabelModal && editingAttachment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+              <h3 className="text-lg font-bold text-brand-blue mb-4">Modifica Etichetta</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Nome File Originale
+                  </label>
+                  <p className="text-sm text-brand-gray bg-brand-gray/10 p-2 rounded">
+                    {editingAttachment.file_name}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Etichetta Personalizzata
+                  </label>
+                  <input
+                    type="text"
+                    value={customLabel}
+                    onChange={(e) => setCustomLabel(e.target.value)}
+                    placeholder="Es: Foto del problema, Manuale d'uso, Certificato..."
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowEditLabelModal(false);
+                    setEditingAttachment(null);
+                    setCustomLabel('');
+                  }}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={updateAttachmentLabel}
+                  className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-6 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200"
+                >
+                  Aggiorna Etichetta
                 </button>
               </div>
             </div>

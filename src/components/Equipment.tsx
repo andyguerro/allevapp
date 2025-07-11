@@ -15,7 +15,6 @@ interface Equipment {
   model?: string;
   serial_number?: string;
   farm_id: string;
-  barn_id?: string;
   status: 'working' | 'not_working' | 'regenerated' | 'repaired';
   description?: string;
   last_maintenance?: string;
@@ -24,7 +23,6 @@ interface Equipment {
   created_at: string;
   // Joined data
   farm_name?: string;
-  barn_name?: string;
 }
 
 interface Farm {
@@ -32,16 +30,9 @@ interface Farm {
   name: string;
 }
 
-interface Barn {
-  id: string;
-  name: string;
-  farm_id: string;
-}
-
 const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
-  const [barns, setBarns] = useState<Barn[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState(initialFilters.filterStatus || 'all');
   const [filterFarm, setFilterFarm] = useState('all');
@@ -57,7 +48,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
     model: '',
     serial_number: '',
     farm_id: '',
-    barn_id: '',
     status: 'working' as 'working' | 'not_working' | 'regenerated' | 'repaired',
     description: '',
     last_maintenance: '',
@@ -83,8 +73,7 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
         .from('equipment')
         .select(`
           *,
-          farms(name),
-          barns(name)
+          farms(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -93,8 +82,7 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       // Transform data
       const transformedEquipment = equipmentData.map(eq => ({
         ...eq,
-        farm_name: eq.farms?.name,
-        barn_name: eq.barns?.name
+        farm_name: eq.farms?.name
       }));
 
       setEquipment(transformedEquipment);
@@ -106,14 +94,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
 
       if (farmsError) throw farmsError;
       setFarms(farmsData);
-
-      // Fetch barns
-      const { data: barnsData, error: barnsError } = await supabase
-        .from('barns')
-        .select('id, name, farm_id');
-
-      if (barnsError) throw barnsError;
-      setBarns(barnsData);
 
     } catch (error) {
       console.error('Errore nel caricamento dati:', error);
@@ -133,7 +113,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
           model: formData.model || null,
           serial_number: formData.serial_number || null,
           farm_id: formData.farm_id,
-          barn_id: formData.barn_id || null,
           status: formData.status,
           description: formData.description || null,
           last_maintenance: formData.last_maintenance || null,
@@ -157,7 +136,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       model: item.model || '',
       serial_number: item.serial_number || '',
       farm_id: item.farm_id,
-      barn_id: item.barn_id || '',
       status: item.status,
       description: item.description || '',
       last_maintenance: item.last_maintenance || '',
@@ -181,7 +159,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
           model: formData.model || null,
           serial_number: formData.serial_number || null,
           farm_id: formData.farm_id,
-          barn_id: formData.barn_id || null,
           status: formData.status,
           description: formData.description || null,
           last_maintenance: formData.last_maintenance || null,
@@ -206,7 +183,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       model: '',
       serial_number: '',
       farm_id: '',
-      barn_id: '',
       status: 'working',
       description: '',
       last_maintenance: '',
@@ -222,7 +198,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
       model: '',
       serial_number: '',
       farm_id: '',
-      barn_id: '',
       status: 'working',
       description: '',
       last_maintenance: '',
@@ -300,10 +275,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
     const matchesFarm = filterFarm === 'all' || item.farm_id === filterFarm;
     return matchesSearch && matchesStatus && matchesFarm;
   });
-
-  const getFilteredBarns = () => {
-    return barns.filter(barn => !formData.farm_id || barn.farm_id === formData.farm_id);
-  };
 
   if (loading) {
     return (
@@ -464,9 +435,7 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
               )}
               <div>
                 <span className="text-sm font-medium text-gray-700">Posizione:</span>
-                <p className="text-sm text-gray-600">
-                  {item.farm_name}{item.barn_name ? ` - ${item.barn_name}` : ''}
-                </p>
+                <p className="text-sm text-gray-600">{item.farm_name}</p>
               </div>
               {item.description && (
                 <div>
@@ -596,39 +565,20 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
               </div>
 
               <div>
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Allevamento
-                  </label>
-                  <select
-                    required
-                    value={formData.farm_id}
-                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, barn_id: '' })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="">Seleziona allevamento</option>
-                    {farms.map(farm => (
-                      <option key={farm.id} value={farm.id}>{farm.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Stalla (opzionale)
-                  </label>
-                  <select
-                    value={formData.barn_id}
-                    onChange={(e) => setFormData({ ...formData, barn_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    disabled={!formData.farm_id}
-                  >
-                    <option value="">Seleziona stalla</option>
-                    {getFilteredBarns().map(barn => (
-                      <option key={barn.id} value={barn.id}>{barn.name}</option>
-                    ))}
-                  </select>
-                </div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Allevamento
+                </label>
+                <select
+                  required
+                  value={formData.farm_id}
+                  onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="">Seleziona allevamento</option>
+                  {farms.map(farm => (
+                    <option key={farm.id} value={farm.id}>{farm.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -776,7 +726,7 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                   <select
                     required
                     value={formData.farm_id}
-                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, barn_id: '' })}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   >
                     <option value="">Seleziona allevamento</option>
@@ -786,25 +736,6 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Stalla (opzionale)
-                  </label>
-                  <select
-                    value={formData.barn_id}
-                    onChange={(e) => setFormData({ ...formData, barn_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    disabled={!formData.farm_id}
-                  >
-                    <option value="">Seleziona stalla</option>
-                    {getFilteredBarns().map(barn => (
-                      <option key={barn.id} value={barn.id}>{barn.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Stato
@@ -820,7 +751,9 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                     <option value="regenerated">Rigenerato</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Ultima Manutenzione
@@ -832,9 +765,7 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Prossima Manutenzione
@@ -846,23 +777,23 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Intervallo Manutenzione (giorni)
-                  </label>
-                  <select
-                    value={formData.maintenance_interval_days}
-                    onChange={(e) => setFormData({ ...formData, maintenance_interval_days: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value={30}>30 giorni (Mensile)</option>
-                    <option value={90}>90 giorni (Trimestrale)</option>
-                    <option value={180}>180 giorni (Semestrale)</option>
-                    <option value={365}>365 giorni (Annuale)</option>
-                    <option value={730}>730 giorni (Biennale)</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Intervallo Manutenzione (giorni)
+                </label>
+                <select
+                  value={formData.maintenance_interval_days}
+                  onChange={(e) => setFormData({ ...formData, maintenance_interval_days: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value={30}>30 giorni (Mensile)</option>
+                  <option value={90}>90 giorni (Trimestrale)</option>
+                  <option value={180}>180 giorni (Semestrale)</option>
+                  <option value={365}>365 giorni (Annuale)</option>
+                  <option value={730}>730 giorni (Biennale)</option>
+                </select>
               </div>
 
               <div>
