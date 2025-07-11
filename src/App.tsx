@@ -28,7 +28,7 @@ const App: React.FC = () => {
       case 'equipment':
         return <Equipment initialFilters={pageFilters} />;
       case 'projects':
-        return <Projects />;
+        return <Projects initialFilters={pageFilters} />;
       case 'quotes':
         return <Quotes />;
       case 'farms':

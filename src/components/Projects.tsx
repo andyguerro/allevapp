@@ -3,6 +3,12 @@ import { Plus, FolderOpen, Edit, Eye, Calendar, Building, FileText, Users, Check
 import { supabase } from '../lib/supabase';
 import SearchFilters, { Option } from './SearchFilters';
 
+interface ProjectsProps {
+  initialFilters?: {
+    farmId?: string;
+  };
+}
+
 interface Project {
   id: string;
   title: string;
@@ -33,7 +39,7 @@ interface User {
   full_name: string;
 }
 
-const Projects: React.FC = () => {
+const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [users, setUsers] = useState<User[]>([]);
