@@ -61,6 +61,7 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewFarmModal, setShowNewFarmModal] = useState(false);
+  const [farmsWithUrgentReports, setFarmsWithUrgentReports] = useState<Set<string>>(new Set());
   const [newFarmData, setNewFarmData] = useState({
     name: '',
     address: '',
@@ -69,6 +70,7 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
 
   useEffect(() => {
     fetchFarms();
+    fetchUrgentReports();
   }, []);
 
   const fetchFarms = async () => {
@@ -84,6 +86,25 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
       console.error('Errore nel caricamento allevamenti:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUrgentReports = async () => {
+    try {
+      const { data: urgentReports, error } = await supabase
+        .from('reports')
+        .select('farm_id')
+        .in('urgency', ['high', 'critical'])
+        .not('status', 'in', '(closed,resolved)');
+
+      if (error) throw error;
+
+      const farmIdsWithUrgentReports = new Set(
+        urgentReports?.map(report => report.farm_id) || []
+      );
+      setFarmsWithUrgentReports(farmIdsWithUrgentReports);
+    } catch (error) {
+      console.error('Errore nel caricamento segnalazioni urgenti:', error);
     }
   };
 
@@ -226,18 +247,35 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
           {farms.map((farm) => (
             <div
               key={farm.id}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
+              className={`rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200 cursor-pointer ${
+                farmsWithUrgentReports.has(farm.id)
+                  ? 'bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300 shadow-yellow-200'
+                  : 'bg-white hover:shadow-xl'
+              }`}
               onClick={() => handleFarmSelect(farm)}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Building className="w-8 h-8 text-blue-600" />
+                  <Building className={`w-8 h-8 ${
+                    farmsWithUrgentReports.has(farm.id) ? 'text-yellow-600' : 'text-blue-600'
+                  }`} />
                   <div>
                     <h3 className="font-semibold text-gray-900">{farm.name}</h3>
                     <p className="text-sm text-gray-500">{farm.company}</p>
+                    {farmsWithUrgentReports.has(farm.id) && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                        <span className="text-xs font-medium text-yellow-700">Segnalazioni urgenti</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Eye className="w-5 h-5 text-gray-400" />
+                <div className="flex items-center gap-2">
+                  {farmsWithUrgentReports.has(farm.id) && (
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                  )}
+                  <Eye className="w-5 h-5 text-gray-400" />
+                </div>
               </div>
               
               {farm.address && (
