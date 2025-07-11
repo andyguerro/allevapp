@@ -323,7 +323,7 @@ const FarmsManagement: React.FC = () => {
                     )}
                     <div className="mt-2">
                       <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-sm font-medium">
-                        {selectedFarmData.farm.company}
+                        {farmData.farm.company}
                       </span>
                     </div>
                     <div className="mt-2">
