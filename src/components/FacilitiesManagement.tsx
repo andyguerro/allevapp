@@ -1,6 +1,3 @@
-Here's the fixed version with the missing closing brackets:
-
-```typescript
 import React, { useState, useEffect } from 'react';
 import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -660,4 +657,3 @@ const FacilitiesManagement: React.FC = () => {
 };
 
 export default FacilitiesManagement;
-```
