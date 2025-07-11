@@ -5,6 +5,7 @@ import Reports from './components/Reports';
 import Equipment from './components/Equipment';
 import Quotes from './components/Quotes';
 import FarmsManagement from './components/FarmsManagement';
+import Projects from './components/Projects';
 import MaintenanceCalendar from './components/MaintenanceCalendar';
 import FacilitiesManagement from './components/FacilitiesManagement';
 import Settings from './components/Settings';
@@ -26,6 +27,8 @@ const App: React.FC = () => {
         return <Reports initialFilters={pageFilters} />;
       case 'equipment':
         return <Equipment initialFilters={pageFilters} />;
+      case 'projects':
+        return <Projects />;
       case 'quotes':
         return <Quotes />;
       case 'farms':

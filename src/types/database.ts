@@ -348,6 +348,47 @@ export interface Database {
           created_by?: string;
         };
       };
+      projects: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          project_number: string;
+          company: string;
+          sequential_number: number;
+          farm_id: string;
+          status: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          project_number: string;
+          company: string;
+          sequential_number: number;
+          farm_id: string;
+          status?: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          project_number?: string;
+          company?: string;
+          sequential_number?: number;
+          farm_id?: string;
+          status?: 'active' | 'completed' | 'cancelled' | 'on_hold';
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
