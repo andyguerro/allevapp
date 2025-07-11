@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Package, Wrench, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Package, Wrench, ChevronLeft, ChevronRight, Filter, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface MaintenanceItem {
@@ -16,27 +16,41 @@ interface MaintenanceItem {
   facility_type?: string;
 }
 
+interface QuoteItem {
+  id: string;
+  title: string;
+  supplier_name: string;
+  farm_name: string;
+  farm_id: string;
+  amount?: number;
+  status: string;
+  due_date: string;
+  description: string;
+}
+
 interface CalendarDay {
   date: Date;
   isCurrentMonth: boolean;
   maintenanceItems: MaintenanceItem[];
+  quoteItems: QuoteItem[];
   isToday: boolean;
   isOverdue: boolean;
 }
 
 const MaintenanceCalendar: React.FC = () => {
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'equipment' | 'facility'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'equipment' | 'facility' | 'quotes'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'due' | 'overdue'>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMaintenanceData();
+    fetchCalendarData();
   }, []);
 
-  const fetchMaintenanceData = async () => {
+  const fetchCalendarData = async () => {
     try {
       // Fetch equipment with maintenance dates
       const { data: equipment, error: equipmentError } = await supabase
@@ -89,8 +103,35 @@ const MaintenanceCalendar: React.FC = () => {
       }));
 
       setMaintenanceItems([...equipmentItems, ...facilityItems]);
+
+      // Fetch quotes with due dates
+      const { data: quotes, error: quotesError } = await supabase
+        .from('quotes')
+        .select(`
+          id, title, description, amount, status, due_date,
+          suppliers(name),
+          farms(id, name)
+        `)
+        .not('due_date', 'is', null)
+        .in('status', ['requested', 'received']);
+
+      if (quotesError) throw quotesError;
+
+      const quoteItems: QuoteItem[] = quotes.map(quote => ({
+        id: quote.id,
+        title: quote.title,
+        supplier_name: quote.suppliers?.name || 'N/A',
+        farm_name: quote.farms?.name || 'N/A',
+        farm_id: quote.farms?.id || '',
+        amount: quote.amount,
+        status: quote.status,
+        due_date: quote.due_date,
+        description: quote.description
+      }));
+
+      setQuoteItems(quoteItems);
     } catch (error) {
-      console.error('Errore nel caricamento dati manutenzione:', error);
+      console.error('Errore nel caricamento dati calendario:', error);
     } finally {
       setLoading(false);
     }
@@ -108,7 +149,7 @@ const MaintenanceCalendar: React.FC = () => {
         .eq('id', itemId);
 
       if (error) throw error;
-      await fetchMaintenanceData();
+      await fetchCalendarData();
     } catch (error) {
       console.error('Errore nell\'aggiornamento data manutenzione:', error);
       alert('Errore nell\'aggiornamento della data di manutenzione');
@@ -140,7 +181,7 @@ const MaintenanceCalendar: React.FC = () => {
         const itemDate = new Date(item.next_maintenance_due);
         return itemDate.toDateString() === date.toDateString();
       }).filter(item => {
-        if (filterType !== 'all' && item.type !== filterType) return false;
+        if (filterType !== 'all' && filterType !== 'quotes' && item.type !== filterType) return false;
         if (filterStatus === 'due') {
           const dueDate = new Date(item.next_maintenance_due!);
           const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -153,8 +194,30 @@ const MaintenanceCalendar: React.FC = () => {
         return true;
       });
 
+      // Filter quote items for this date
+      const dayQuoteItems = quoteItems.filter(item => {
+        if (!item.due_date) return false;
+        const itemDate = new Date(item.due_date);
+        return itemDate.toDateString() === date.toDateString();
+      }).filter(item => {
+        if (filterType !== 'all' && filterType !== 'quotes') return false;
+        if (filterStatus === 'due') {
+          const dueDate = new Date(item.due_date);
+          const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          return daysDiff >= 0 && daysDiff <= 7;
+        }
+        if (filterStatus === 'overdue') {
+          const dueDate = new Date(item.due_date);
+          return dueDate < today;
+        }
+        return true;
+      });
+
       const isOverdue = dayMaintenanceItems.some(item => {
         const dueDate = new Date(item.next_maintenance_due!);
+        return dueDate < today;
+      }) || dayQuoteItems.some(item => {
+        const dueDate = new Date(item.due_date);
         return dueDate < today;
       });
 
@@ -162,6 +225,7 @@ const MaintenanceCalendar: React.FC = () => {
         date,
         isCurrentMonth,
         maintenanceItems: dayMaintenanceItems,
+        quoteItems: dayQuoteItems,
         isToday,
         isOverdue
       });
@@ -264,6 +328,7 @@ const MaintenanceCalendar: React.FC = () => {
               <option value="all">Tutto</option>
               <option value="equipment">Attrezzature</option>
               <option value="facility">Impianti</option>
+              <option value="quotes">Preventivi</option>
             </select>
           </div>
           <select
@@ -310,8 +375,8 @@ const MaintenanceCalendar: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-brand-gray">Totale Elementi</p>
-              <p className="text-3xl font-bold text-brand-blue">{maintenanceItems.length}</p>
-              <p className="text-xs text-brand-gray mt-1">Attrezzature e impianti</p>
+              <p className="text-3xl font-bold text-brand-blue">{maintenanceItems.length + quoteItems.length}</p>
+              <p className="text-xs text-brand-gray mt-1">Manutenzioni e preventivi</p>
             </div>
             <div className="p-3 bg-brand-blue/10 rounded-lg">
               <Calendar size={24} className="text-brand-blue" />
@@ -388,9 +453,18 @@ const MaintenanceCalendar: React.FC = () => {
                         <span className="truncate">{item.name}</span>
                       </div>
                     ))}
-                    {day.maintenanceItems.length > 2 && (
+                    {day.quoteItems.slice(0, Math.max(0, 2 - day.maintenanceItems.length)).map((item, itemIndex) => (
+                      <div
+                        key={`quote-${itemIndex}`}
+                        className="text-xs p-1 rounded flex items-center space-x-1 bg-green-100 text-green-800"
+                      >
+                        <FileText size={12} />
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                    ))}
+                    {(day.maintenanceItems.length + day.quoteItems.length) > 2 && (
                       <div className="text-xs text-brand-gray">
-                        +{day.maintenanceItems.length - 2} altri
+                        +{(day.maintenanceItems.length + day.quoteItems.length) - 2} altri
                       </div>
                     )}
                   </div>
@@ -503,9 +577,13 @@ const MaintenanceCalendar: React.FC = () => {
                 </h3>
               </div>
               <div className="p-4">
-                {calendarDays.find(day => day.date.toDateString() === selectedDate.toDateString())?.maintenanceItems.length ? (
+                {(() => {
+                  const selectedDay = calendarDays.find(day => day.date.toDateString() === selectedDate.toDateString());
+                  const totalItems = (selectedDay?.maintenanceItems.length || 0) + (selectedDay?.quoteItems.length || 0);
+                  
+                  return totalItems > 0 ? (
                   <div className="space-y-3">
-                    {calendarDays.find(day => day.date.toDateString() === selectedDate.toDateString())?.maintenanceItems.map((item) => (
+                    {selectedDay?.maintenanceItems.map((item) => (
                       <div key={item.id} className="p-3 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20">
                         <div className="flex items-center space-x-2 mb-2">
                           {getTypeIcon(item.type)}
@@ -520,12 +598,31 @@ const MaintenanceCalendar: React.FC = () => {
                         </span>
                       </div>
                     ))}
+                    {selectedDay?.quoteItems.map((item) => (
+                      <div key={`quote-${item.id}`} className="p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <FileText size={16} className="text-green-600" />
+                          <span className="font-medium text-green-800">{item.title}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">Fornitore: {item.supplier_name}</p>
+                        <p className="text-sm text-gray-600 mb-1">Allevamento: {item.farm_name}</p>
+                        {item.amount && (
+                          <p className="text-sm text-gray-600 mb-1">Importo: €{item.amount.toLocaleString()}</p>
+                        )}
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${
+                          item.status === 'requested' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-blue-100 text-blue-800 border-blue-200'
+                        }`}>
+                          {item.status === 'requested' ? 'In Attesa' : 'Ricevuto'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ) : (
+                  ) : (
                   <p className="text-sm text-brand-gray text-center py-4">
-                    Nessuna manutenzione programmata per questa data
+                    Nessuna attività programmata per questa data
                   </p>
-                )}
+                  );
+                })()}
               </div>
             </div>
           )}
