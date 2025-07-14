@@ -320,24 +320,24 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
-          <h2 className="text-xl font-bold text-brand-blue">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
+          <h2 className="text-lg sm:text-xl font-bold text-brand-blue pr-4">
             Allegati {getEntityTypeText(entityType)}: {entityName}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+            className="p-2 text-brand-gray hover:text-brand-red transition-colors flex-shrink-0"
           >
             <X size={24} />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
           {/* Upload Area */}
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+            className={`border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-all duration-200 ${
               dragOver
                 ? 'border-brand-red bg-brand-red/5'
                 : 'border-brand-gray/30 hover:border-brand-coral'
@@ -346,20 +346,20 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
           >
-            <Upload size={48} className={`mx-auto mb-4 ${dragOver ? 'text-brand-red' : 'text-brand-gray'}`} />
-            <h3 className="text-lg font-medium text-brand-blue mb-2">
+            <Upload size={32} className={`mx-auto mb-3 sm:mb-4 ${dragOver ? 'text-brand-red' : 'text-brand-gray'} sm:w-12 sm:h-12`} />
+            <h3 className="text-base sm:text-lg font-medium text-brand-blue mb-2">
               Carica un nuovo allegato
             </h3>
-            <p className="text-brand-gray mb-4">
+            <p className="text-sm sm:text-base text-brand-gray mb-3 sm:mb-4">
               Trascina i file qui o clicca per selezionare
             </p>
-            <p className="text-xs text-brand-gray mb-4">
+            <p className="text-xs text-brand-gray mb-3 sm:mb-4">
               Formati supportati: immagini, PDF, documenti Word, Excel, file di testo<br/>
               Dimensione massima: 10MB
             </p>
             
             {/* Storage Status Warning */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 sm:mb-4 text-left">
               <div className="flex items-start space-x-2">
                 <div className="text-yellow-600 mt-0.5">⚠️</div>
                 <div className="text-sm text-yellow-800">
@@ -379,72 +379,72 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
             />
             <label
               htmlFor="file-upload"
-              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl"
+              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-sm sm:text-base"
             >
-              <Plus size={20} />
+              <Plus size={18} className="sm:w-5 sm:h-5" />
               <span>Seleziona File</span>
             </label>
           </div>
 
           {/* Attachments List */}
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold text-brand-blue mb-4">
+          <div className="mt-6 sm:mt-8">
+            <h3 className="text-base sm:text-lg font-semibold text-brand-blue mb-3 sm:mb-4">
               Allegati ({attachments.length})
             </h3>
             
             {loading ? (
-              <div className="flex items-center justify-center py-8">
+              <div className="flex items-center justify-center py-6 sm:py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-blue"></div>
               </div>
             ) : attachments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                 {attachments.map((attachment) => (
                   <div
                     key={attachment.id}
-                    className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20 p-4 hover:shadow-lg transition-all duration-200"
+                    className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20 p-3 sm:p-4 hover:shadow-lg transition-all duration-200"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1">
+                      <div className="flex items-start space-x-2 sm:space-x-3 flex-1 min-w-0">
                         <div className="p-2 bg-white rounded-lg shadow-sm">
                           {getFileIcon(attachment.mime_type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
+                          <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
                             <Tag size={14} className="text-brand-coral" />
-                            <h4 className="font-medium text-brand-blue truncate">
+                            <h4 className="font-medium text-brand-blue truncate text-sm sm:text-base">
                               {attachment.custom_label || attachment.file_name}
                             </h4>
                           </div>
-                          <p className="text-sm text-brand-gray truncate">
+                          <p className="text-xs sm:text-sm text-brand-gray truncate">
                             {attachment.file_name}
                           </p>
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-brand-gray">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-1 sm:mt-2 text-xs text-brand-gray space-y-1 sm:space-y-0">
                             <span>{formatFileSize(attachment.file_size)}</span>
                             <span>{new Date(attachment.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2 ml-2">
+                      <div className="flex flex-col sm:flex-row items-center space-y-1 sm:space-y-0 sm:space-x-1 ml-2 flex-shrink-0">
                         <button
                           onClick={() => startEditLabel(attachment)}
-                          className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                          className="p-1.5 sm:p-2 text-brand-gray hover:text-brand-coral transition-colors rounded"
                           title="Modifica etichetta"
                         >
-                          <Tag size={16} />
+                          <Tag size={14} className="sm:w-4 sm:h-4" />
                         </button>
                         <button
                           onClick={() => downloadFile(attachment.file_path, attachment.file_name)}
-                          className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+                          className="p-1.5 sm:p-2 text-brand-gray hover:text-brand-blue transition-colors rounded"
                           title="Scarica file"
                         >
-                          <Download size={16} />
+                          <Download size={14} className="sm:w-4 sm:h-4" />
                         </button>
                         <button
                           onClick={() => deleteAttachment(attachment.id, attachment.file_path)}
-                          className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+                          className="p-1.5 sm:p-2 text-brand-gray hover:text-brand-red transition-colors rounded"
                           title="Elimina"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} className="sm:w-4 sm:h-4" />
                         </button>
                       </div>
                     </div>
@@ -452,10 +452,10 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <File size={48} className="mx-auto text-brand-gray mb-4" />
-                <h4 className="text-lg font-medium text-brand-blue mb-2">Nessun allegato</h4>
-                <p className="text-brand-gray">Carica il primo allegato per questo {getEntityTypeText(entityType).toLowerCase()}.</p>
+              <div className="text-center py-6 sm:py-8">
+                <File size={32} className="mx-auto text-brand-gray mb-3 sm:mb-4 sm:w-12 sm:h-12" />
+                <h4 className="text-base sm:text-lg font-medium text-brand-blue mb-2">Nessun allegato</h4>
+                <p className="text-sm sm:text-base text-brand-gray">Carica il primo allegato per questo {getEntityTypeText(entityType).toLowerCase()}.</p>
               </div>
             )}
           </div>
@@ -464,21 +464,21 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         {/* Label Modal */}
         {showLabelModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
-              <h3 className="text-lg font-bold text-brand-blue mb-4">Aggiungi Etichetta</h3>
+            <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-md mx-4">
+              <h3 className="text-base sm:text-lg font-bold text-brand-blue mb-4">Aggiungi Etichetta</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-brand-blue mb-2">
                     Nome File
                   </label>
-                  <p className="text-sm text-brand-gray bg-brand-gray/10 p-2 rounded">
+                  <p className="text-xs sm:text-sm text-brand-gray bg-brand-gray/10 p-2 rounded break-all">
                     {selectedFile?.name}
                   </p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-brand-blue mb-2">
                     Etichetta Personalizzata
                   </label>
                   <input
@@ -486,19 +486,19 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                     value={customLabel}
                     onChange={(e) => setCustomLabel(e.target.value)}
                     placeholder="Es: Foto del problema, Manuale d'uso, Certificato..."
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    className="w-full px-3 py-2 text-sm border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 mt-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
                 <button
                   onClick={() => {
                     setShowLabelModal(false);
                     setSelectedFile(null);
                     setCustomLabel('');
                   }}
-                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors text-sm sm:text-base"
                   disabled={uploading}
                 >
                   Annulla
@@ -506,7 +506,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                 <button
                   onClick={uploadFile}
                   disabled={uploading}
-                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-4 sm:px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
                   {uploading ? 'Caricamento...' : 'Carica File'}
                 </button>
@@ -518,21 +518,21 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         {/* Edit Label Modal */}
         {showEditLabelModal && editingAttachment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
-              <h3 className="text-lg font-bold text-brand-blue mb-4">Modifica Etichetta</h3>
+            <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 w-full max-w-md mx-4">
+              <h3 className="text-base sm:text-lg font-bold text-brand-blue mb-4">Modifica Etichetta</h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-brand-blue mb-2">
                     Nome File Originale
                   </label>
-                  <p className="text-sm text-brand-gray bg-brand-gray/10 p-2 rounded">
+                  <p className="text-xs sm:text-sm text-brand-gray bg-brand-gray/10 p-2 rounded break-all">
                     {editingAttachment.file_name}
                   </p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-brand-blue mb-2">
                     Etichetta Personalizzata
                   </label>
                   <input
@@ -540,25 +540,25 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                     value={customLabel}
                     onChange={(e) => setCustomLabel(e.target.value)}
                     placeholder="Es: Foto del problema, Manuale d'uso, Certificato..."
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    className="w-full px-3 py-2 text-sm border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 mt-6">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
                 <button
                   onClick={() => {
                     setShowEditLabelModal(false);
                     setEditingAttachment(null);
                     setCustomLabel('');
                   }}
-                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors text-sm sm:text-base"
                 >
                   Annulla
                 </button>
                 <button
                   onClick={updateAttachmentLabel}
-                  className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-6 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200"
+                  className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 sm:px-6 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 text-sm sm:text-base"
                 >
                   Aggiorna Etichetta
                 </button>

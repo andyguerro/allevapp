@@ -580,13 +580,14 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-1 sm:space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
-          <Plus size={20} />
-          <span>Nuova Segnalazione</span>
+          <Plus size={18} className="sm:w-5 sm:h-5" />
+          <span className="text-sm sm:text-base">Nuova</span>
+          <span className="hidden sm:inline">Segnalazione</span>
         </button>
       </div>
 
@@ -618,47 +619,47 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-brand-gray">Aperte</p>
-              <p className="text-2xl font-bold text-brand-red">
+              <p className="text-xs sm:text-sm font-medium text-brand-gray">Aperte</p>
+              <p className="text-xl sm:text-2xl font-bold text-brand-red">
                 {reports.filter(r => r.status === 'open').length}
               </p>
             </div>
-            <AlertTriangle size={24} className="text-brand-red" />
+            <AlertTriangle size={20} className="text-brand-red sm:w-6 sm:h-6" />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-brand-gray">In Corso</p>
-              <p className="text-2xl font-bold text-brand-coral">
+              <p className="text-xs sm:text-sm font-medium text-brand-gray">In Corso</p>
+              <p className="text-xl sm:text-2xl font-bold text-brand-coral">
                 {reports.filter(r => r.status === 'in_progress').length}
               </p>
             </div>
-            <Clock size={24} className="text-brand-coral" />
+            <Clock size={20} className="text-brand-coral sm:w-6 sm:h-6" />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-brand-gray">Urgenti</p>
-              <p className="text-2xl font-bold text-orange-600">
+              <p className="text-xs sm:text-sm font-medium text-brand-gray">Urgenti</p>
+              <p className="text-xl sm:text-2xl font-bold text-orange-600">
                 {reports.filter(r => r.urgency === 'high' || r.urgency === 'critical').length}
               </p>
             </div>
-            <AlertTriangle size={24} className="text-orange-500" />
+            <AlertTriangle size={20} className="text-orange-500 sm:w-6 sm:h-6" />
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-brand-gray">Totali</p>
-              <p className="text-2xl font-bold text-brand-blue">{reports.length}</p>
+              <p className="text-xs sm:text-sm font-medium text-brand-gray">Totali</p>
+              <p className="text-xl sm:text-2xl font-bold text-brand-blue">{reports.length}</p>
             </div>
-            <ClipboardList size={24} className="text-brand-blue" />
+            <ClipboardList size={20} className="text-brand-blue sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
@@ -677,12 +678,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       {/* Reports List */}
       <div className="space-y-4">
         {filteredReports.map((report) => (
-          <div key={report.id} className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6 hover:shadow-xl transition-all duration-200">
-            <div className="flex items-start justify-between">
+          <div key={report.id} className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-4 sm:p-6 hover:shadow-xl transition-all duration-200">
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between space-y-4 lg:space-y-0">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                   {getStatusIcon(report.status)}
-                  <h3 className="text-lg font-semibold text-brand-blue">{report.title}</h3>
+                  <h3 className="text-base sm:text-lg font-semibold text-brand-blue flex-1 min-w-0">{report.title}</h3>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(report.status)}`}>
                     {getStatusText(report.status)}
                   </span>
@@ -691,9 +692,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                   </span>
                 </div>
                 
-                <p className="text-brand-gray mb-4">{report.description}</p>
+                <p className="text-brand-gray mb-4 text-sm sm:text-base">{report.description}</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
                     <span className="font-medium text-brand-blue">Allevamento:</span>
                     <p className="text-brand-gray">{report.farm_name}</p>
@@ -723,32 +724,32 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                 </div>
                 
                 {report.notes && (
-                  <div className="mt-4 p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
+                  <div className="mt-3 sm:mt-4 p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
                     <span className="font-medium text-brand-blue">Note:</span>
                     <p className="text-brand-gray text-sm mt-1">{report.notes}</p>
                   </div>
                 )}
               </div>
               
-              <div className="flex items-center space-x-2 ml-4">
+              <div className="flex items-center justify-end space-x-2 lg:ml-4">
                 <button 
                   onClick={() => {
                     setSelectedReportId(report.id);
                     setSelectedReportTitle(report.title);
                   }}
-                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10"
                   title="Gestisci allegati"
                 >
                   <Paperclip size={18} />
                 </button>
                 <button 
                   onClick={() => handleEdit(report)}
-                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors rounded-lg hover:bg-brand-coral/10"
                   title="Modifica segnalazione"
                 >
                   <Edit size={18} />
                 </button>
-                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
+                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10">
                   <Eye size={18} />
                 </button>
               </div>

@@ -167,11 +167,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {statsCards.map((stat, index) => (
           <div 
             key={index} 
-            className={`bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6 transition-all duration-200 ${
+            className={`bg-white rounded-xl shadow-lg border border-brand-coral/20 p-4 sm:p-6 transition-all duration-200 ${
               stat.clickable 
                 ? 'hover:shadow-xl hover:scale-105 cursor-pointer transform hover:border-brand-coral/40' 
                 : 'hover:shadow-xl hover:scale-105'
@@ -181,14 +181,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-brand-gray">{stat.title}</p>
-                <p className="text-3xl font-bold text-brand-blue mt-2">{stat.value}</p>
+                <p className="text-xs sm:text-sm font-medium text-brand-gray">{stat.title}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-brand-blue mt-1 sm:mt-2">{stat.value}</p>
                 {stat.clickable && (
-                  <p className="text-xs text-brand-gray mt-1 opacity-70">Clicca per dettagli</p>
+                  <p className="text-xs text-brand-gray mt-1 opacity-70 hidden sm:block">Clicca per dettagli</p>
                 )}
               </div>
-              <div className={`p-3 rounded-full ${stat.bgColor} shadow-lg`}>
-                <stat.icon size={24} className={stat.textColor} />
+              <div className={`p-2 sm:p-3 rounded-full ${stat.bgColor} shadow-lg`}>
+                <stat.icon size={20} className={`${stat.textColor} sm:w-6 sm:h-6`} />
               </div>
             </div>
           </div>
@@ -197,41 +197,42 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Recent Reports */}
       <div className="bg-white rounded-xl shadow-lg border border-brand-coral/20">
-        <div className="p-6 border-b border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
+        <div className="p-4 sm:p-6 border-b border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-brand-blue">Segnalazioni Recenti</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-brand-blue">Segnalazioni Recenti</h2>
             <button
               onClick={() => onNavigate('reports')}
               className="text-sm text-brand-coral hover:text-brand-red transition-colors font-medium"
             >
-              Vedi tutte →
+              <span className="hidden sm:inline">Vedi tutte →</span>
+              <span className="sm:hidden">Tutte</span>
             </button>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {recentReports.length > 0 ? (
             <div className="space-y-4">
               {recentReports.map((report) => (
                 <div 
                   key={report.id} 
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/10 hover:shadow-md transition-all duration-200 cursor-pointer hover:border-brand-coral/30"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/10 hover:shadow-md transition-all duration-200 cursor-pointer hover:border-brand-coral/30 space-y-2 sm:space-y-0"
                   onClick={() => onNavigate('reports')}
                   title="Clicca per aprire le segnalazioni"
                 >
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-3 sm:space-x-4">
                     {getStatusIcon(report.status)}
                     <div>
-                      <h3 className="font-medium text-brand-blue">{report.title}</h3>
-                      <p className="text-sm text-brand-gray">{report.farm_name}</p>
+                      <h3 className="font-medium text-brand-blue text-sm sm:text-base">{report.title}</h3>
+                      <p className="text-xs sm:text-sm text-brand-gray">{report.farm_name}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center justify-between sm:space-x-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyColor(report.urgency)}`}>
                       {report.urgency === 'high' ? 'Alta' : 
                        report.urgency === 'medium' ? 'Media' : 
                        report.urgency === 'low' ? 'Bassa' : 'Critica'}
                     </span>
-                    <span className="text-sm text-brand-gray">
+                    <span className="text-xs sm:text-sm text-brand-gray">
                       {new Date(report.created_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -249,56 +250,56 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div 
-          className="bg-gradient-to-br from-brand-red/10 to-brand-red-light/10 rounded-xl p-6 border border-brand-red/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+          className="bg-gradient-to-br from-brand-red/10 to-brand-red-light/10 rounded-xl p-4 sm:p-6 border border-brand-red/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
           onClick={() => onNavigate('reports')}
         >
-          <div className="flex items-center space-x-3 mb-4">
-            <ClipboardList size={24} className="text-brand-red" />
-            <h3 className="text-lg font-semibold text-brand-red">Segnalazioni</h3>
+          <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+            <ClipboardList size={20} className="text-brand-red sm:w-6 sm:h-6" />
+            <h3 className="text-base sm:text-lg font-semibold text-brand-red">Segnalazioni</h3>
           </div>
-          <p className="text-brand-gray text-sm mb-4">
+          <p className="text-brand-gray text-xs sm:text-sm mb-3 sm:mb-4">
             Gestisci le segnalazioni di problemi e manutenzioni
           </p>
-          <div className="text-2xl font-bold text-brand-red">
+          <div className="text-xl sm:text-2xl font-bold text-brand-red">
             {stats.totalReports} totali
           </div>
-          <p className="text-xs text-brand-gray mt-2 opacity-70">Clicca per gestire</p>
+          <p className="text-xs text-brand-gray mt-1 sm:mt-2 opacity-70 hidden sm:block">Clicca per gestire</p>
         </div>
 
         <div 
-          className="bg-gradient-to-br from-brand-blue/10 to-brand-blue-light/10 rounded-xl p-6 border border-brand-blue/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+          className="bg-gradient-to-br from-brand-blue/10 to-brand-blue-light/10 rounded-xl p-4 sm:p-6 border border-brand-blue/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
           onClick={() => onNavigate('equipment')}
         >
-          <div className="flex items-center space-x-3 mb-4">
-            <Package size={24} className="text-brand-blue" />
-            <h3 className="text-lg font-semibold text-brand-blue">Attrezzature</h3>
+          <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+            <Package size={20} className="text-brand-blue sm:w-6 sm:h-6" />
+            <h3 className="text-base sm:text-lg font-semibold text-brand-blue">Attrezzature</h3>
           </div>
-          <p className="text-brand-gray text-sm mb-4">
+          <p className="text-brand-gray text-xs sm:text-sm mb-3 sm:mb-4">
             Monitora lo stato delle attrezzature dell'allevamento
           </p>
-          <div className="text-2xl font-bold text-brand-blue">
+          <div className="text-xl sm:text-2xl font-bold text-brand-blue">
             {stats.totalEquipment} registrate
           </div>
-          <p className="text-xs text-brand-gray mt-2 opacity-70">Clicca per gestire</p>
+          <p className="text-xs text-brand-gray mt-1 sm:mt-2 opacity-70 hidden sm:block">Clicca per gestire</p>
         </div>
 
         <div 
-          className="bg-gradient-to-br from-brand-coral/10 to-brand-coral-light/10 rounded-xl p-6 border border-brand-coral/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+          className="bg-gradient-to-br from-brand-coral/10 to-brand-coral-light/10 rounded-xl p-4 sm:p-6 border border-brand-coral/20 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 sm:col-span-2 lg:col-span-1"
           onClick={() => onNavigate('quotes')}
         >
-          <div className="flex items-center space-x-3 mb-4">
-            <FileText size={24} className="text-brand-coral" />
-            <h3 className="text-lg font-semibold text-brand-coral">Preventivi</h3>
+          <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+            <FileText size={20} className="text-brand-coral sm:w-6 sm:h-6" />
+            <h3 className="text-base sm:text-lg font-semibold text-brand-coral">Preventivi</h3>
           </div>
-          <p className="text-brand-gray text-sm mb-4">
+          <p className="text-brand-gray text-xs sm:text-sm mb-3 sm:mb-4">
             Gestisci i preventivi e le richieste
           </p>
-          <div className="text-2xl font-bold text-brand-coral">
+          <div className="text-xl sm:text-2xl font-bold text-brand-coral">
             Sistema attivo
           </div>
-          <p className="text-xs text-brand-gray mt-2 opacity-70">Clicca per gestire</p>
+          <p className="text-xs text-brand-gray mt-1 sm:mt-2 opacity-70 hidden sm:block">Clicca per gestire</p>
         </div>
       </div>
     </div>
