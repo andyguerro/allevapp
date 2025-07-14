@@ -61,6 +61,27 @@ interface AttachmentFile {
 }
 
 const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
+  // Helper functions - moved before useState to avoid initialization errors
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'open': return 'Aperta';
+      case 'in_progress': return 'In Corso';
+      case 'resolved': return 'Risolta';
+      case 'closed': return 'Chiusa';
+      default: return status;
+    }
+  };
+
+  const getUrgencyText = (urgency: string) => {
+    switch (urgency) {
+      case 'low': return 'Bassa';
+      case 'medium': return 'Media';
+      case 'high': return 'Alta';
+      case 'critical': return 'Critica';
+      default: return urgency;
+    }
+  };
+
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -501,26 +522,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       case 'resolved': return <CheckCircle size={16} className="text-brand-blue" />;
       case 'closed': return <CheckCircle size={16} className="text-brand-gray" />;
       default: return null;
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'open': return 'Aperta';
-      case 'in_progress': return 'In Corso';
-      case 'resolved': return 'Risolta';
-      case 'closed': return 'Chiusa';
-      default: return status;
-    }
-  };
-
-  const getUrgencyText = (urgency: string) => {
-    switch (urgency) {
-      case 'low': return 'Bassa';
-      case 'medium': return 'Media';
-      case 'high': return 'Alta';
-      case 'critical': return 'Critica';
-      default: return urgency;
     }
   };
 
