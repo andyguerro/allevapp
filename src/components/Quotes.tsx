@@ -194,16 +194,6 @@ const Quotes: React.FC = () => {
     e.preventDefault();
     
     try {
-      // Prepara le note includendo il progetto se specificato
-      let notes = formData.notes || null;
-      if (formData.project_id) {
-        const selectedProject = projects.find(p => p.id === formData.project_id);
-        if (selectedProject) {
-          const projectNote = `Progetto: ${selectedProject.project_number} - ${selectedProject.title}`;
-          notes = notes ? `${projectNote}\n${notes}` : projectNote;
-        }
-      }
-
       const { error } = await supabase
         .from('quotes')
         .insert({
@@ -215,7 +205,7 @@ const Quotes: React.FC = () => {
           project_id: formData.project_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
-          notes: notes,
+          notes: formData.notes || null,
           created_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
         });
 
@@ -245,29 +235,16 @@ const Quotes: React.FC = () => {
   };
 
   const handleEdit = (quote: Quote) => {
-    // Estrai project_id dalle note se presente
-    let projectId = '';
-    if (quote.notes?.includes('Progetto:')) {
-      const projectLine = quote.notes.split('\n')[0];
-      const projectNumber = projectLine.split('Progetto: ')[1]?.split(' - ')[0];
-      if (projectNumber) {
-        const project = projects.find(p => p.project_number === projectNumber);
-        if (project) {
-          projectId = project.id;
-        }
-      }
-    }
-
     setFormData({
       title: quote.title,
       description: quote.description,
       supplier_id: quote.supplier_id,
       farm_id: quote.farm_id || '',
       report_id: quote.report_id || '',
-      project_id: projectId,
+      project_id: quote.project_id || '',
       amount: quote.amount ? quote.amount.toString() : '',
       due_date: quote.due_date || '',
-      notes: quote.notes?.replace(/Progetto: [^\n]*\n?/, '') || ''
+      notes: quote.notes || ''
     });
     setEditingQuote(quote);
     setShowEditModal(true);
@@ -279,16 +256,6 @@ const Quotes: React.FC = () => {
     if (!editingQuote) return;
     
     try {
-      // Prepara le note includendo il progetto se specificato
-      let notes = formData.notes || null;
-      if (formData.project_id) {
-        const selectedProject = projects.find(p => p.id === formData.project_id);
-        if (selectedProject) {
-          const projectNote = `Progetto: ${selectedProject.project_number} - ${selectedProject.title}`;
-          notes = notes ? `${projectNote}\n${notes}` : projectNote;
-        }
-      }
-
       const { error } = await supabase
         .from('quotes')
         .update({
@@ -300,7 +267,7 @@ const Quotes: React.FC = () => {
           project_id: formData.project_id || null,
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
-          notes: notes
+          notes: formData.notes || null
         })
         .eq('id', editingQuote.id);
 
@@ -439,10 +406,7 @@ const Quotes: React.FC = () => {
   const getAvailableProjects = () => {
     if (!formData.farm_id) return [];
     
-    const selectedFarm = farms.find(f => f.id === formData.farm_id);
-    if (!selectedFarm) return [];
-    
-    return projects.filter(p => p.company === selectedFarm.company);
+    return projects.filter(p => p.farm_id === formData.farm_id);
   };
 
   if (loading) {
@@ -737,6 +701,7 @@ const Quotes: React.FC = () => {
                     value={formData.project_id}
                     onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    disabled={!formData.farm_id}
                   >
                     <option value="">Seleziona progetto</option>
                     {getAvailableProjects().map(project => (
@@ -746,8 +711,8 @@ const Quotes: React.FC = () => {
                     ))}
                   </select>
                   <p className="text-xs text-brand-gray mt-1">
-                    {formData.farm_id 
-                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.company || 'questa azienda'}`
+                    {formData.farm_id
+                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.name || 'questo allevamento'}`
                       : 'Seleziona prima un allevamento per vedere i progetti disponibili'
                     }
                   </p>
@@ -904,6 +869,7 @@ const Quotes: React.FC = () => {
                     value={formData.project_id}
                     onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    disabled={!formData.farm_id}
                   >
                     <option value="">Seleziona progetto</option>
                     {getAvailableProjects().map(project => (
@@ -913,8 +879,8 @@ const Quotes: React.FC = () => {
                     ))}
                   </select>
                   <p className="text-xs text-brand-gray mt-1">
-                    {formData.farm_id 
-                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.company || 'questa azienda'}`
+                    {formData.farm_id
+                      ? `Progetti disponibili per ${farms.find(f => f.id === formData.farm_id)?.name || 'questo allevamento'}`
                       : 'Seleziona prima un allevamento per vedere i progetti disponibili'
                     }
                   </p>
