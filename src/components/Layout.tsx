@@ -1,14 +1,17 @@
 import React from 'react';
-import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Database, Menu, X } from 'lucide-react';
+import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, User, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
   currentPage: string;
   onNavigate: (page: string) => void;
+  currentUser?: any;
+  onLogout?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, currentUser, onLogout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [showUserMenu, setShowUserMenu] = React.useState(false);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -26,6 +29,25 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
     onNavigate(page);
     setMobileMenuOpen(false);
   };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
+      case 'manager': return 'bg-brand-blue/20 text-brand-blue border-brand-blue/30';
+      case 'technician': return 'bg-brand-coral/20 text-brand-coral border-brand-coral/30';
+      default: return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
+    }
+  };
+
+  const getRoleText = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Amministratore';
+      case 'manager': return 'Manager';
+      case 'technician': return 'Tecnico';
+      default: return role;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -46,10 +68,68 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
                 <h1 className="text-xl sm:text-2xl font-bold text-brand-red">AllevApp</h1>
               </div>
             </div>
-            <div className="hidden sm:flex items-center space-x-4">
-              <span className="text-xs sm:text-sm text-brand-gray">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden sm:block text-xs sm:text-sm text-brand-gray">
                 Sistema di Gestione Allevamenti
-              </span>
+              </div>
+              
+              {/* User Menu */}
+              {currentUser && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 sm:space-x-3 px-2 sm:px-3 py-2 rounded-lg bg-brand-blue/10 hover:bg-brand-blue/20 transition-colors"
+                  >
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-brand-blue to-brand-blue-light rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-bold">
+                      {currentUser.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <p className="text-xs font-medium text-brand-blue truncate max-w-24">
+                        {currentUser.full_name.split(' ')[0]}
+                      </p>
+                      <p className="text-xs text-brand-gray">
+                        {getRoleText(currentUser.role)}
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* User Dropdown */}
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-brand-coral/20 z-50">
+                      <div className="p-4 border-b border-brand-coral/20">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-brand-blue to-brand-blue-light rounded-full flex items-center justify-center text-white font-bold">
+                            {currentUser.full_name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-brand-blue truncate">
+                              {currentUser.full_name}
+                            </p>
+                            <p className="text-sm text-brand-gray truncate">
+                              {currentUser.email}
+                            </p>
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border mt-1 ${getRoleColor(currentUser.role)}`}>
+                              {getRoleText(currentUser.role)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-2">
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            if (onLogout) onLogout();
+                          }}
+                          className="w-full flex items-center space-x-3 px-3 py-2 text-left text-brand-red hover:bg-brand-red/10 rounded-lg transition-colors"
+                        >
+                          <LogOut size={16} />
+                          <span>Cambia Utente</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -94,6 +174,14 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
             onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* User Menu Overlay */}
+        {showUserMenu && (
+          <div 
+            className="fixed inset-0 z-40"
+            onClick={() => setShowUserMenu(false)}
           />
         )}
         {/* Main Content */}
