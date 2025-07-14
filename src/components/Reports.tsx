@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
+import ReportDetailModal from './ReportDetailModal';
 import SearchFilters, { Option } from './SearchFilters';
 
 interface ReportsProps {
@@ -105,6 +106,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
   const [loading, setLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
+
+  // Detail modal state
+  const [selectedReportForDetail, setSelectedReportForDetail] = useState<string | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -758,6 +762,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                   <Paperclip size={18} />
                 </button>
                 <button 
+                  onClick={() => setSelectedReportForDetail(report.id)}
+                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10"
+                  title="Visualizza dettagli"
+                >
+                  <Eye size={18} />
+                </button>
+                <button 
                   onClick={() => handleEdit(report)}
                   className="p-2 text-brand-gray hover:text-brand-coral transition-colors rounded-lg hover:bg-brand-coral/10"
                   title="Modifica segnalazione"
@@ -1220,6 +1231,18 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
           onClose={() => {
             setSelectedReportId(null);
             setSelectedReportTitle('');
+          }}
+        />
+      )}
+
+      {/* Report Detail Modal */}
+      {selectedReportForDetail && (
+        <ReportDetailModal
+          reportId={selectedReportForDetail}
+          onClose={() => setSelectedReportForDetail(null)}
+          onEdit={(report) => {
+            setSelectedReportForDetail(null);
+            handleEdit(report);
           }}
         />
       )}

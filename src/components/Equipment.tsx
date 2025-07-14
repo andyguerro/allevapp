@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye } from 'lucide-react';
 import AttachmentsManager from './AttachmentsManager';
+import EquipmentDetailModal from './EquipmentDetailModal';
 
 interface Equipment {
   id: string;
@@ -34,6 +35,7 @@ export default function Equipment() {
   const [selectedAttachmentEquipment, setSelectedAttachmentEquipment] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
+  const [selectedEquipmentForDetail, setSelectedEquipmentForDetail] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     model: '',
@@ -713,6 +715,13 @@ export default function Equipment() {
             <div className="flex justify-between items-center mt-4">
               <div className="flex space-x-2">
                 <button
+                  onClick={() => setSelectedEquipmentForDetail(item.id)}
+                  className="p-2 text-gray-600 hover:text-brand-blue hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Visualizza dettagli"
+                >
+                  <Eye size={16} />
+                </button>
+                <button
                   onClick={() => handleEdit(item)}
                   className="p-2 text-gray-600 hover:text-brand-blue hover:bg-gray-100 rounded-lg transition-colors"
                   title="Modifica attrezzatura"
@@ -753,6 +762,17 @@ export default function Equipment() {
           entityId={selectedAttachmentEquipment}
           entityName={equipment.find(e => e.id === selectedAttachmentEquipment)?.name || 'Attrezzatura'}
           onClose={() => setSelectedAttachmentEquipment(null)}
+        />
+      )}
+
+      {selectedEquipmentForDetail && (
+        <EquipmentDetailModal
+          equipmentId={selectedEquipmentForDetail}
+          onClose={() => setSelectedEquipmentForDetail(null)}
+          onEdit={(equipment) => {
+            setSelectedEquipmentForDetail(null);
+            handleEdit(equipment);
+          }}
         />
       )}
     </div>

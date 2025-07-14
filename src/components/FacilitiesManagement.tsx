@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
+import FacilityDetailModal from './FacilityDetailModal';
 import SearchFilters, { Option } from './SearchFilters';
 
 interface Facility {
@@ -43,6 +44,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
   const [loading, setLoading] = useState(true);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
   const [selectedFacilityName, setSelectedFacilityName] = useState<string>('');
+  const [selectedFacilityForDetail, setSelectedFacilityForDetail] = useState<string | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -522,6 +524,13 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
 
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setSelectedFacilityForDetail(facility.id)}
+                  className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                  title="Visualizza dettagli"
+                >
+                  <Eye size={16} />
+                </button>
                 <button className="p-2 text-gray-400 hover:text-blue-600 transition-colors">
                   <button
                     onClick={() => {
@@ -863,6 +872,18 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
           onClose={() => {
             setSelectedFacilityId(null);
             setSelectedFacilityName('');
+          }}
+        />
+      )}
+
+      {/* Facility Detail Modal */}
+      {selectedFacilityForDetail && (
+        <FacilityDetailModal
+          facilityId={selectedFacilityForDetail}
+          onClose={() => setSelectedFacilityForDetail(null)}
+          onEdit={(facility) => {
+            setSelectedFacilityForDetail(null);
+            handleEdit(facility);
           }}
         />
       )}
