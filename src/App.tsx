@@ -52,19 +52,19 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard onNavigate={handleNavigate} />;
       case 'reports':
-        return <Reports initialFilters={pageFilters} />;
+        return <Reports initialFilters={pageFilters} currentUser={currentUser} />;
       case 'equipment':
-        return <Equipment initialFilters={pageFilters} />;
+        return <Equipment initialFilters={pageFilters} currentUser={currentUser} />;
       case 'projects':
-        return <Projects initialFilters={pageFilters} />;
+        return <Projects initialFilters={pageFilters} currentUser={currentUser} />;
       case 'quotes':
-        return <Quotes />;
+        return <Quotes currentUser={currentUser} />;
       case 'farms':
         return <FarmsManagement onNavigate={handleNavigate} />;
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
-        return <FacilitiesManagement />;
+        return <FacilitiesManagement currentUser={currentUser} />;
       case 'settings':
         return <Settings />;
       default:
