@@ -150,6 +150,22 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
 
       if (updateError) throw updateError;
 
+      // Auto-reject competing quotes with the same title and farm
+      if (quote.farm_id && quote.title) {
+        const { error: rejectError } = await supabase
+          .from('quotes')
+          .update({ status: 'rejected' })
+          .eq('farm_id', quote.farm_id)
+          .eq('title', quote.title)
+          .neq('id', quote.id)
+          .in('status', ['requested', 'received']);
+
+        if (rejectError) {
+          console.error('Errore nel rifiuto automatico preventivi concorrenti:', rejectError);
+          // Non bloccare l'operazione principale
+        }
+      }
+
       onConfirm(orderConfirmation);
     } catch (error) {
       console.error('Errore nella creazione ordine:', error);

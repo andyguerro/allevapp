@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, User, LogOut } from 'lucide-react';
+import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, User, LogOut, ShoppingCart } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, curr
     { id: 'facilities', label: 'Impianti', icon: Wrench },
     { id: 'projects', label: 'Progetti', icon: FolderOpen },
     { id: 'quotes', label: 'Preventivi', icon: FileText },
+    { id: 'orders', label: 'Ordini', icon: ShoppingCart },
     { id: 'maintenance', label: 'Calendario', icon: Calendar },
     { id: 'settings', label: 'Impostazioni', icon: Settings },
   ];
