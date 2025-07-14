@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag } from 'lucide-react';
+import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
 import SearchFilters from './SearchFilters';
