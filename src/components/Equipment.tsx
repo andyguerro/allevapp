@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar } from 'lucide-react';
+import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package } from 'lucide-react';
 import AttachmentsManager from './AttachmentsManager';
 
 interface Equipment {
@@ -32,6 +32,8 @@ export default function Equipment() {
   const [showForm, setShowForm] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [selectedAttachmentEquipment, setSelectedAttachmentEquipment] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     model: '',
@@ -91,6 +93,115 @@ export default function Equipment() {
     return nextDate.toISOString().split('T')[0];
   };
 
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const newFiles: AttachmentFile[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Verifica dimensione file (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Il file "${file.name}" è troppo grande. Dimensione massima: 10MB`);
+        continue;
+      }
+      
+      newFiles.push({
+        file,
+        label: file.name.split('.')[0], // Nome file senza estensione come default
+        id: Math.random().toString(36).substring(2)
+      });
+    }
+    
+    setAttachmentFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const removeAttachmentFile = (id: string) => {
+    setAttachmentFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const updateAttachmentLabel = (id: string, label: string) => {
+    setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
+  };
+
+  const uploadAttachments = async (equipmentId: string) => {
+    if (attachmentFiles.length === 0) return;
+
+    try {
+      // Get a default user from the users table since auth is not configured
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.warn('No active user found for attachments:', userError);
+        return; // Non bloccare la creazione dell'attrezzatura
+      }
+
+      for (const attachmentFile of attachmentFiles) {
+        try {
+          // Genera un nome file unico
+          const fileExt = attachmentFile.file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `equipment/${equipmentId}/${fileName}`;
+
+          // Try to upload file to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, attachmentFile.file);
+
+          if (uploadError) {
+            console.warn(`Upload error for ${attachmentFile.file.name}:`, uploadError);
+            continue; // Continua con gli altri file
+          }
+
+          // Salva i metadati nel database
+          const { error: dbError } = await supabase
+            .from('attachments')
+            .insert({
+              entity_type: 'equipment',
+              entity_id: equipmentId,
+              file_name: attachmentFile.file.name,
+              file_path: filePath,
+              custom_label: attachmentFile.label || attachmentFile.file.name,
+              file_size: attachmentFile.file.size,
+              mime_type: attachmentFile.file.type,
+              created_by: defaultUser.id
+            });
+
+          if (dbError) {
+            console.warn(`Database error for ${attachmentFile.file.name}:`, dbError);
+          }
+        } catch (fileError) {
+          console.warn(`Error uploading ${attachmentFile.file.name}:`, fileError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error uploading attachments:', error);
+      // Non bloccare la creazione dell'attrezzatura per errori di upload
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -112,11 +223,18 @@ export default function Equipment() {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: newEquipment, error } = await supabase
           .from('equipment')
-          .insert([equipmentData]);
+          .insert([equipmentData])
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Upload attachments if any
+        if (attachmentFiles.length > 0) {
+          await uploadAttachments(newEquipment.id);
+        }
       }
 
       await fetchEquipment();
@@ -182,6 +300,7 @@ export default function Equipment() {
       last_maintenance: '',
       maintenance_interval_days: 365
     });
+    setAttachmentFiles([]);
     setEditingEquipment(null);
     setShowForm(false);
   };
@@ -212,6 +331,24 @@ export default function Equipment() {
     const today = new Date();
     const daysUntilMaintenance = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntilMaintenance <= 7 && daysUntilMaintenance >= 0;
+  };
+
+  const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return <File size={16} className="text-gray-600" />;
+    
+    if (mimeType.startsWith('image/')) {
+      return <Image size={16} className="text-blue-600" />;
+    } else if (mimeType.includes('pdf') || mimeType.includes('document')) {
+      return <FileText size={16} className="text-red-600" />;
+    } else {
+      return <File size={16} className="text-gray-600" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const getStatusColor = (status: string) => {
@@ -370,6 +507,102 @@ export default function Equipment() {
               />
             </div>
 
+            {/* Attachments Section - Only for new equipment */}
+            {!editingEquipment && (
+              <div className="md:col-span-2 border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Allegati (opzionale)</h3>
+                
+                {/* Upload Area */}
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 mb-4 ${
+                    dragOver
+                      ? 'border-brand-blue bg-brand-blue/5'
+                      : 'border-gray-300 hover:border-brand-blue'
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <Upload size={32} className={`mx-auto mb-3 ${dragOver ? 'text-brand-blue' : 'text-gray-400'}`} />
+                  <h4 className="text-md font-medium text-gray-900 mb-2">
+                    Aggiungi allegati all'attrezzatura
+                  </h4>
+                  <p className="text-gray-600 mb-3 text-sm">
+                    Trascina i file qui o clicca per selezionare
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Formati supportati: immagini, PDF, documenti • Max 10MB per file
+                  </p>
+                  
+                  <input
+                    type="file"
+                    onChange={(e) => handleFileSelect(e.target.files)}
+                    className="hidden"
+                    id="equipment-attachment-upload"
+                    accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
+                    multiple
+                  />
+                  <label
+                    htmlFor="equipment-attachment-upload"
+                    className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2"
+                  >
+                    <Plus size={16} />
+                    <span>Seleziona File</span>
+                  </label>
+                </div>
+
+                {/* Selected Files List */}
+                {attachmentFiles.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      File selezionati ({attachmentFiles.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {attachmentFiles.map((attachmentFile) => (
+                        <div
+                          key={attachmentFile.id}
+                          className="bg-gray-50 rounded-lg border border-gray-200 p-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3 flex-1">
+                              <div className="p-2 bg-white rounded-lg shadow-sm">
+                                {getFileIcon(attachmentFile.file.type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Tag size={12} className="text-brand-blue" />
+                                  <input
+                                    type="text"
+                                    value={attachmentFile.label}
+                                    onChange={(e) => updateAttachmentLabel(attachmentFile.id, e.target.value)}
+                                    className="text-sm font-medium text-gray-900 bg-transparent border-none outline-none flex-1"
+                                    placeholder="Etichetta file..."
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {attachmentFile.file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(attachmentFile.file.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeAttachmentFile(attachmentFile.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Rimuovi file"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="md:col-span-2 flex justify-end space-x-3">
               <button
                 type="button"
@@ -380,9 +613,15 @@ export default function Equipment() {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark"
+                className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark flex items-center space-x-2"
               >
-                {editingEquipment ? 'Aggiorna' : 'Crea'}
+                <Package size={16} />
+                <span>{editingEquipment ? 'Aggiorna' : 'Crea'}</span>
+                {!editingEquipment && attachmentFiles.length > 0 && (
+                  <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+                    +{attachmentFiles.length} file
+                  </span>
+                )}
               </button>
             </div>
           </form>
@@ -487,6 +726,7 @@ export default function Equipment() {
         <AttachmentsManager
           entityType="equipment"
           entityId={selectedAttachmentEquipment}
+          entityName={equipment.find(e => e.id === selectedAttachmentEquipment)?.name || 'Attrezzatura'}
           onClose={() => setSelectedAttachmentEquipment(null)}
         />
       )}
