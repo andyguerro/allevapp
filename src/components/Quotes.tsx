@@ -212,7 +212,6 @@ const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
           farm_id: formData.farm_id || null,
           report_id: formData.report_id || null,
           project_id: formData.project_id || null,
-          amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
           notes: formData.notes || null,
           created_by: currentUser.id
