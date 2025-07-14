@@ -10,7 +10,6 @@ import Projects from './components/Projects';
 import MaintenanceCalendar from './components/MaintenanceCalendar';
 import FacilitiesManagement from './components/FacilitiesManagement';
 import Settings from './components/Settings';
-import StorageDiagnostics from './components/StorageDiagnostics';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -54,17 +53,17 @@ const App: React.FC = () => {
       case 'reports':
         return <Reports initialFilters={pageFilters} currentUser={currentUser} />;
       case 'equipment':
-        return <Equipment initialFilters={pageFilters} currentUser={currentUser} />;
+        return <Equipment />;
       case 'projects':
-        return <Projects initialFilters={pageFilters} currentUser={currentUser} />;
+        return <Projects initialFilters={pageFilters} />;
       case 'quotes':
-        return <Quotes currentUser={currentUser} />;
+        return <Quotes />;
       case 'farms':
         return <FarmsManagement onNavigate={handleNavigate} />;
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
-        return <FacilitiesManagement currentUser={currentUser} />;
+        return <FacilitiesManagement />;
       case 'settings':
         return <Settings />;
       default:
