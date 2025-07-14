@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogIn, Users, Building, AlertCircle } from 'lucide-react';
+import { User, LogIn, Users, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserSelectionProps {
@@ -17,8 +17,15 @@ interface AppUser {
 
 const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [authenticating, setAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const CORRECT_PASSWORD = 'Z00Alleva';
 
   useEffect(() => {
     fetchUsers();
@@ -43,12 +50,42 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
     }
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    if (!selectedUserId) {
+      setAuthError('Seleziona un utente');
+      return;
+    }
+
+    if (!password) {
+      setAuthError('Inserisci la password');
+      return;
+    }
+
+    setAuthenticating(true);
+
+    // Simula un piccolo delay per l'autenticazione
+    setTimeout(() => {
+      if (password === CORRECT_PASSWORD) {
+        const selectedUser = users.find(user => user.id === selectedUserId);
+        if (selectedUser) {
+          onUserSelect(selectedUser);
+        }
+      } else {
+        setAuthError('Password non corretta');
+      }
+      setAuthenticating(false);
+    }, 500);
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
-      case 'manager': return 'bg-brand-blue/20 text-brand-blue border-brand-blue/30';
-      case 'technician': return 'bg-brand-coral/20 text-brand-coral border-brand-coral/30';
-      default: return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
+      case 'admin': return 'text-brand-red';
+      case 'manager': return 'text-brand-blue';
+      case 'technician': return 'text-brand-coral';
+      default: return 'text-brand-gray';
     }
   };
 
@@ -69,6 +106,8 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
       default: return '👤';
     }
   };
+
+  const selectedUser = users.find(user => user.id === selectedUserId);
 
   if (loading) {
     return (
@@ -131,7 +170,7 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-blue via-brand-blue-light to-brand-coral flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-brand-red to-brand-red-light p-6 sm:p-8 text-center">
           <div className="flex items-center justify-center space-x-3 mb-4">
@@ -145,42 +184,110 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
         <div className="p-6 sm:p-8">
           <div className="text-center mb-6 sm:mb-8">
             <LogIn size={32} className="mx-auto text-brand-blue mb-3 sm:mb-4" />
-            <h2 className="text-xl sm:text-2xl font-semibold text-brand-blue mb-2">Seleziona Utente</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-brand-blue mb-2">Accesso Utente</h2>
             <p className="text-brand-gray text-sm sm:text-base">
-              Scegli il tuo profilo per accedere all'applicazione
+              Seleziona il tuo profilo e inserisci la password
             </p>
           </div>
 
-          {/* Users Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {users.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => onUserSelect(user)}
-                className="group bg-gradient-to-br from-brand-blue/5 to-brand-coral/5 border border-brand-coral/20 rounded-xl p-4 sm:p-6 hover:shadow-lg hover:border-brand-coral/40 transition-all duration-200 text-left hover:scale-105 transform"
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* User Selection */}
+            <div>
+              <label className="block text-sm font-medium text-brand-blue mb-2">
+                Seleziona Utente
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full px-4 py-3 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors bg-white"
+                required
               >
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-brand-blue to-brand-blue-light rounded-full flex items-center justify-center text-white text-lg sm:text-xl font-bold group-hover:from-brand-red group-hover:to-brand-red-light transition-all duration-200">
-                      {getRoleIcon(user.role)}
-                    </div>
+                <option value="">-- Scegli un utente --</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getRoleIcon(user.role)} {user.full_name} ({getRoleText(user.role)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selected User Info */}
+            {selectedUser && (
+              <div className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 border border-brand-coral/20 rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-brand-blue to-brand-blue-light rounded-full flex items-center justify-center text-white text-lg font-bold">
+                    {selectedUser.full_name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-brand-blue text-sm sm:text-base group-hover:text-brand-red transition-colors duration-200 truncate">
-                      {user.full_name}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-brand-blue">
+                      {selectedUser.full_name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-brand-gray mb-2 truncate">{user.email}</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${getRoleColor(user.role)}`}>
-                      {getRoleText(user.role)}
+                    <p className="text-sm text-brand-gray">{selectedUser.email}</p>
+                    <span className={`text-xs font-medium ${getRoleColor(selectedUser.role)}`}>
+                      {getRoleText(selectedUser.role)}
                     </span>
                   </div>
-                  <div className="flex-shrink-0">
-                    <User size={16} className="text-brand-gray group-hover:text-brand-coral transition-colors duration-200 sm:w-5 sm:h-5" />
-                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+              </div>
+            )}
+
+            {/* Password Input */}
+            <div>
+              <label className="block text-sm font-medium text-brand-blue mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setAuthError(null);
+                  }}
+                  className="w-full px-4 py-3 pr-12 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
+                  placeholder="Inserisci la password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {authError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle size={16} className="text-red-600" />
+                  <span className="text-sm text-red-700">{authError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Login Button */}
+            <button
+              type="submit"
+              disabled={authenticating || !selectedUserId || !password}
+              className="w-full bg-gradient-to-r from-brand-red to-brand-red-light text-white py-3 px-6 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium"
+            >
+              {authenticating ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Accesso in corso...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  <span>Accedi</span>
+                </>
+              )}
+            </button>
+          </form>
 
           {/* Footer Info */}
           <div className="mt-6 sm:mt-8 pt-6 border-t border-brand-coral/20">
