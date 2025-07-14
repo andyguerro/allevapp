@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, Edit, Eye, AlertTriangle, Clock, CheckCircle, Send, Paperclip, Mail, Upload, File, Image, FileText, X, Tag } from 'lucide-react';
+import { Plus, ClipboardList, Edit, Eye, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import ReportDetails from './ReportDetails';
+import AttachmentsManager from './AttachmentsManager';
 import SearchFilters, { Option } from './SearchFilters';
 
 interface ReportsProps {
@@ -41,6 +41,12 @@ interface Farm {
 interface Equipment {
   id: string;
   name: string;
+  farm_id: string;
+}
+
+interface Supplier {
+  id: string;
+  name: string;
 }
 
 interface User {
@@ -48,25 +54,26 @@ interface User {
   full_name: string;
 }
 
-interface Supplier {
+interface AttachmentFile {
+  file: File;
+  label: string;
   id: string;
-  name: string;
-  email: string;
 }
 
 const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, Option[]>>({
     status: initialFilters?.filterStatus ? [{ value: initialFilters.filterStatus, label: getStatusText(initialFilters.filterStatus) }] : [],
-    urgency: initialFilters?.filterUrgency ? [{ value: initialFilters.filterUrgency, label: getUrgencyText(initialFilters.filterUrgency) }] : [],
+    urgency: initialFilters?.filterUrgency === 'urgent' ? [
+      { value: 'high', label: 'Alta' },
+      { value: 'critical', label: 'Critica' }
+    ] : [],
     farm: [],
-    equipment: [],
-    supplier: [],
     assigned_to: []
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -75,13 +82,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedReportTitle, setSelectedReportTitle] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [selectedReportForQuote, setSelectedReportForQuote] = useState<Report | null>(null);
-
-  // Attachment states for new report
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
   const [dragOver, setDragOver] = useState(false);
+  const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -97,17 +99,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     notes: ''
   });
 
-  const [quoteFormData, setQuoteFormData] = useState({
-    suppliers: [] as string[],
-    title: '',
-    description: '',
-    due_date: '',
-    notes: ''
-  });
-
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Apply initial filters when component mounts
+  useEffect(() => {
+    if (initialFilters?.filterStatus || initialFilters?.filterUrgency) {
+      // Already handled in useState initialization
+    }
+  }, [initialFilters]);
 
   const fetchData = async () => {
     try {
@@ -149,10 +150,18 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       // Fetch equipment
       const { data: equipmentData, error: equipmentError } = await supabase
         .from('equipment')
-        .select('id, name');
+        .select('id, name, farm_id');
 
       if (equipmentError) throw equipmentError;
       setEquipment(equipmentData);
+
+      // Fetch suppliers
+      const { data: suppliersData, error: suppliersError } = await supabase
+        .from('suppliers')
+        .select('id, name');
+
+      if (suppliersError) throw suppliersError;
+      setSuppliers(suppliersData);
 
       // Fetch users
       const { data: usersData, error: usersError } = await supabase
@@ -162,14 +171,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
 
       if (usersError) throw usersError;
       setUsers(usersData);
-
-      // Fetch suppliers
-      const { data: suppliersData, error: suppliersError } = await supabase
-        .from('suppliers')
-        .select('id, name, email');
-
-      if (suppliersError) throw suppliersError;
-      setSuppliers(suppliersData);
 
       // Prepare filter options
       const statusOptions: Option[] = [
@@ -191,19 +192,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
         label: farm.name
       }));
 
-      const equipmentOptions: Option[] = equipmentData.map(eq => ({
-        value: eq.id,
-        label: eq.name
-      }));
-
       const userOptions: Option[] = usersData.map(user => ({
         value: user.id,
         label: user.full_name
-      }));
-
-      const supplierOptions: Option[] = suppliersData.map(supplier => ({
-        value: supplier.id,
-        label: supplier.name
       }));
 
       setFilterOptions([
@@ -223,16 +214,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           options: farmOptions
         },
         {
-          id: 'equipment',
-          label: 'Attrezzatura',
-          options: equipmentOptions
-        },
-        {
-          id: 'supplier',
-          label: 'Fornitore',
-          options: supplierOptions
-        },
-        {
           id: 'assigned_to',
           label: 'Assegnato a',
           options: userOptions
@@ -246,16 +227,131 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     }
   };
 
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const newFiles: AttachmentFile[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Verifica dimensione file (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Il file "${file.name}" è troppo grande. Dimensione massima: 10MB`);
+        continue;
+      }
+      
+      newFiles.push({
+        file,
+        label: file.name.split('.')[0], // Nome file senza estensione come default
+        id: Math.random().toString(36).substring(2)
+      });
+    }
+    
+    setAttachmentFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const removeAttachmentFile = (id: string) => {
+    setAttachmentFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const updateAttachmentLabel = (id: string, label: string) => {
+    setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
+  };
+
+  const uploadAttachments = async (reportId: string) => {
+    if (attachmentFiles.length === 0) return;
+
+    try {
+      // Get a default user from the users table since auth is not configured
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.warn('No active user found for attachments:', userError);
+        return; // Non bloccare la creazione della segnalazione
+      }
+
+      for (const attachmentFile of attachmentFiles) {
+        try {
+          // Genera un nome file unico
+          const fileExt = attachmentFile.file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `report/${reportId}/${fileName}`;
+
+          // Try to upload file to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, attachmentFile.file);
+
+          if (uploadError) {
+            console.warn(`Upload error for ${attachmentFile.file.name}:`, uploadError);
+            continue; // Continua con gli altri file
+          }
+
+          // Salva i metadati nel database
+          const { error: dbError } = await supabase
+            .from('attachments')
+            .insert({
+              entity_type: 'report',
+              entity_id: reportId,
+              file_name: attachmentFile.file.name,
+              file_path: filePath,
+              custom_label: attachmentFile.label || attachmentFile.file.name,
+              file_size: attachmentFile.file.size,
+              mime_type: attachmentFile.file.type,
+              created_by: defaultUser.id
+            });
+
+          if (dbError) {
+            console.warn(`Database error for ${attachmentFile.file.name}:`, dbError);
+          }
+        } catch (fileError) {
+          console.warn(`Error uploading ${attachmentFile.file.name}:`, fileError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error uploading attachments:', error);
+      // Non bloccare la creazione della segnalazione per errori di upload
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      let createdBy = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'; // Default fallback
-      if (user) {
-        createdBy = user.id;
+      // Get a default user from the users table since auth is not configured
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.error('No active user found:', userError);
+        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
+        return;
       }
 
       const { data: newReport, error } = await supabase
@@ -267,12 +363,19 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           equipment_id: formData.equipment_id || null,
           supplier_id: formData.supplier_id || null,
           assigned_to: formData.assigned_to,
-          created_by: createdBy,
+          created_by: defaultUser.id,
           urgency: formData.urgency,
           notes: formData.notes || null
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Upload attachments if any
+      if (attachmentFiles.length > 0) {
+        await uploadAttachments(newReport.id);
+      }
 
       await fetchData();
       resetForm();
@@ -280,6 +383,21 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       console.error('Errore nel creare segnalazione:', error);
       alert('Errore nel creare la segnalazione');
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      farm_id: '',
+      equipment_id: '',
+      supplier_id: '',
+      assigned_to: '',
+      urgency: 'medium',
+      notes: ''
+    });
+    setAttachmentFiles([]);
+    setShowCreateModal(false);
   };
 
   const handleEdit = (report: Report) => {
@@ -315,16 +433,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           urgency: formData.urgency,
           notes: formData.notes || null
         })
-        .eq('id', editingReport.id)
-        .select()
-        .single();
+        .eq('id', editingReport.id);
 
       if (error) throw error;
-
-      // Upload attachments if any
-      if (newReport && selectedFiles.length > 0) {
-        await uploadAttachments(newReport.id);
-      }
 
       await fetchData();
       resetEditForm();
@@ -332,22 +443,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       console.error('Errore nell\'aggiornamento segnalazione:', error);
       alert('Errore nell\'aggiornamento della segnalazione');
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      farm_id: '',
-      equipment_id: '',
-      supplier_id: '',
-      assigned_to: '',
-      urgency: 'medium',
-      notes: ''
-    });
-    setSelectedFiles([]);
-    setFileLabels({});
-    setShowCreateModal(false);
   };
 
   const resetEditForm = () => {
@@ -365,132 +460,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     setShowEditModal(false);
   };
 
-  const handleStatusChange = async (reportId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .update({ status: newStatus })
-        .eq('id', reportId);
-
-      if (error) throw error;
-      await fetchData();
-    } catch (error) {
-      console.error('Errore nell\'aggiornamento stato:', error);
-      alert('Errore nell\'aggiornamento dello stato');
-    }
-  };
-
-  const handleCreateQuoteRequests = (report: Report) => {
-    setSelectedReportForQuote(report);
-    setQuoteFormData({
-      suppliers: [],
-      title: `Preventivo per: ${report.title}`,
-      description: report.description,
-      due_date: '',
-      notes: ''
-    });
-    setShowQuoteModal(true);
-  };
-
-  const handleQuoteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedReportForQuote || quoteFormData.suppliers.length === 0) {
-      alert('Seleziona almeno un fornitore');
-      return;
-    }
-
-    try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      let createdBy = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'; // Default fallback
-      if (user) {
-        createdBy = user.id;
-      }
-
-      // Create quotes for each selected supplier
-      const quotePromises = quoteFormData.suppliers.map(supplierId => 
-        supabase
-          .from('quotes')
-          .insert({
-            report_id: selectedReportForQuote.id,
-            supplier_id: supplierId,
-            farm_id: selectedReportForQuote.farm_id,
-            title: quoteFormData.title,
-            description: quoteFormData.description,
-            due_date: quoteFormData.due_date || null,
-            notes: quoteFormData.notes || null,
-            created_by: createdBy
-          })
-      );
-
-      const results = await Promise.all(quotePromises);
-      
-      // Check for errors
-      const errors = results.filter(result => result.error);
-      if (errors.length > 0) {
-        throw new Error(`Errore nella creazione di ${errors.length} preventivi`);
-      }
-
-      // Send emails to suppliers
-      const emailPromises = quoteFormData.suppliers.map(async (supplierId) => {
-        const supplier = suppliers.find(s => s.id === supplierId);
-        if (!supplier) return;
-
-        try {
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-quote-email`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              to: supplier.email,
-              supplierName: supplier.name,
-              quoteTitle: quoteFormData.title,
-              quoteDescription: quoteFormData.description,
-              farmName: selectedReportForQuote.farm_name,
-              dueDate: quoteFormData.due_date,
-              contactInfo: {
-                companyName: 'AllevApp',
-                email: 'info@allevapp.com',
-                phone: '+39 02 123456789'
-              }
-            }),
-          });
-
-          if (!response.ok) {
-            console.error(`Errore nell'invio email a ${supplier.name}`);
-          }
-        } catch (error) {
-          console.error(`Errore nell'invio email a ${supplier.name}:`, error);
-        }
-      });
-
-      await Promise.all(emailPromises);
-
-      alert(`${quoteFormData.suppliers.length} preventivi creati e inviati con successo!`);
-      resetQuoteForm();
-      await fetchData();
-    } catch (error) {
-      console.error('Errore nella creazione preventivi:', error);
-      alert('Errore nella creazione dei preventivi');
-    }
-  };
-
-  const resetQuoteForm = () => {
-    setQuoteFormData({
-      suppliers: [],
-      title: '',
-      description: '',
-      due_date: '',
-      notes: ''
-    });
-    setSelectedReportForQuote(null);
-    setShowQuoteModal(false);
-  };
-
   const handleFilterChange = (filterId: string, selected: Option[]) => {
     setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
   };
@@ -500,21 +469,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       status: [],
       urgency: [],
       farm: [],
-      equipment: [],
-      supplier: [],
       assigned_to: []
     });
     setSearchTerm('');
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
-      case 'medium': return 'bg-brand-coral/20 text-brand-coral border-brand-coral/30';
-      case 'low': return 'bg-brand-blue/20 text-brand-blue border-brand-blue/30';
-      case 'critical': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
-    }
   };
 
   const getStatusColor = (status: string) => {
@@ -523,6 +480,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       case 'in_progress': return 'bg-brand-coral/20 text-brand-coral border-brand-coral/30';
       case 'resolved': return 'bg-brand-blue/20 text-brand-blue border-brand-blue/30';
       case 'closed': return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
+      default: return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
+    }
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-brand-gray/20 text-brand-gray border-brand-gray/30';
     }
   };
@@ -549,20 +516,37 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
 
   const getUrgencyText = (urgency: string) => {
     switch (urgency) {
-      case 'high': return 'Alta';
-      case 'medium': return 'Media';
       case 'low': return 'Bassa';
+      case 'medium': return 'Media';
+      case 'high': return 'Alta';
       case 'critical': return 'Critica';
       default: return urgency;
     }
+  };
+
+  const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return <File size={16} className="text-brand-gray" />;
+    
+    if (mimeType.startsWith('image/')) {
+      return <Image size={16} className="text-brand-blue" />;
+    } else if (mimeType.includes('pdf') || mimeType.includes('document')) {
+      return <FileText size={16} className="text-brand-red" />;
+    } else {
+      return <File size={16} className="text-brand-gray" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.farm_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.equipment_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase());
+                         report.equipment_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedFilters.status.length === 0 || 
                           selectedFilters.status.some(option => option.value === report.status);
@@ -573,17 +557,17 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     const matchesFarm = selectedFilters.farm.length === 0 || 
                         selectedFilters.farm.some(option => option.value === report.farm_id);
     
-    const matchesEquipment = selectedFilters.equipment.length === 0 || 
-                             (report.equipment_id && selectedFilters.equipment.some(option => option.value === report.equipment_id));
-    
-    const matchesSupplier = selectedFilters.supplier.length === 0 || 
-                            (report.supplier_id && selectedFilters.supplier.some(option => option.value === report.supplier_id));
-    
     const matchesAssignedTo = selectedFilters.assigned_to.length === 0 || 
                               selectedFilters.assigned_to.some(option => option.value === report.assigned_to);
     
-    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesEquipment && matchesSupplier && matchesAssignedTo;
+    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesAssignedTo;
   });
+
+  // Filter equipment based on selected farm
+  const getAvailableEquipment = () => {
+    if (!formData.farm_id) return [];
+    return equipment.filter(eq => eq.farm_id === formData.farm_id);
+  };
 
   if (loading) {
     return (
@@ -610,7 +594,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       {(selectedFilters.status.length > 0 || selectedFilters.urgency.length > 0) && (
         <div className="bg-brand-blue/10 border border-brand-blue/20 rounded-lg p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 flex-wrap">
+            <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-brand-blue">Filtri attivi:</span>
               {selectedFilters.status.length > 0 && (
                 <span className="px-2 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-xs">
@@ -624,18 +608,18 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
               )}
             </div>
             <button
-              onClick={clearAllFilters}
+              onClick={() => setSelectedFilters(prev => ({ ...prev, status: [], urgency: [] }))}
               className="text-sm text-brand-gray hover:text-brand-blue transition-colors"
             >
-              Rimuovi tutti i filtri
+              Rimuovi filtri
             </button>
           </div>
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-brand-gray">Aperte</p>
@@ -646,7 +630,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
             <AlertTriangle size={24} className="text-brand-red" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-brand-gray">In Corso</p>
@@ -657,18 +641,18 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
             <Clock size={24} className="text-brand-coral" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-brand-gray">Urgenti</p>
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-2xl font-bold text-orange-600">
                 {reports.filter(r => r.urgency === 'high' || r.urgency === 'critical').length}
               </p>
             </div>
-            <AlertTriangle size={24} className="text-purple-500" />
+            <AlertTriangle size={24} className="text-orange-500" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-brand-gray">Totali</p>
@@ -699,11 +683,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                 <div className="flex items-center space-x-3 mb-3">
                   {getStatusIcon(report.status)}
                   <h3 className="text-lg font-semibold text-brand-blue">{report.title}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(report.urgency)}`}>
-                    {getUrgencyText(report.urgency)}
-                  </span>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(report.status)}`}>
                     {getStatusText(report.status)}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(report.urgency)}`}>
+                    {getUrgencyText(report.urgency)}
                   </span>
                 </div>
                 
@@ -714,14 +698,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     <span className="font-medium text-brand-blue">Allevamento:</span>
                     <p className="text-brand-gray">{report.farm_name}</p>
                   </div>
-                  <div>
-                    <span className="font-medium text-brand-blue">Attrezzatura:</span>
-                    <p className="text-brand-gray">{report.equipment_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-brand-blue">Fornitore:</span>
-                    <p className="text-brand-gray">{report.supplier_name || 'N/A'}</p>
-                  </div>
+                  {report.equipment_name && (
+                    <div>
+                      <span className="font-medium text-brand-blue">Attrezzatura:</span>
+                      <p className="text-brand-gray">{report.equipment_name}</p>
+                    </div>
+                  )}
                   <div>
                     <span className="font-medium text-brand-blue">Assegnato a:</span>
                     <p className="text-brand-gray">{report.assigned_user_name}</p>
@@ -771,55 +753,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                 </button>
               </div>
             </div>
-            
-            {/* Action Buttons */}
-            <div className="mt-4 flex items-center justify-between pt-4 border-t border-brand-coral/20">
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-medium text-brand-blue">Azioni:</span>
-                <div className="flex space-x-1">
-                  {report.status !== 'in_progress' && report.status !== 'closed' && report.status !== 'resolved' && (
-                    <button
-                      onClick={() => handleStatusChange(report.id, 'in_progress')}
-                      className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs hover:bg-yellow-200 transition-colors"
-                    >
-                      In Corso
-                    </button>
-                  )}
-                  {report.status !== 'resolved' && report.status !== 'closed' && (
-                    <button
-                      onClick={() => handleStatusChange(report.id, 'resolved')}
-                      className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors"
-                    >
-                      Risolvi
-                    </button>
-                  )}
-                  {report.status !== 'closed' && (
-                    <button
-                      onClick={() => handleStatusChange(report.id, 'closed')}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 transition-colors"
-                    >
-                      Chiudi
-                    </button>
-                  )}
-                  {(report.status === 'closed' || report.status === 'resolved') && (
-                    <button
-                      onClick={() => handleStatusChange(report.id, 'open')}
-                      className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition-colors"
-                    >
-                      Riapri
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              <button
-                onClick={() => handleCreateQuoteRequests(report)}
-                className="px-3 py-1 bg-brand-red/10 text-brand-red rounded-lg text-xs hover:bg-brand-red/20 transition-colors flex items-center space-x-1"
-              >
-                <Send size={12} />
-                <span>Richiedi Preventivi</span>
-              </button>
-            </div>
           </div>
         ))}
       </div>
@@ -827,37 +760,39 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-brand-blue mb-4">Nuova Segnalazione</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Titolo
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Titolo Segnalazione
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    placeholder="Es: Problema con sistema di ventilazione"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Descrizione
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
-              </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Descrizione
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    placeholder="Descrivi dettagliatamente il problema..."
+                  />
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Allevamento
@@ -865,7 +800,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                   <select
                     required
                     value={formData.farm_id}
-                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, equipment_id: '' })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   >
                     <option value="">Seleziona allevamento</option>
@@ -883,9 +818,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     value={formData.equipment_id}
                     onChange={(e) => setFormData({ ...formData, equipment_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    disabled={!formData.farm_id}
                   >
                     <option value="">Seleziona attrezzatura</option>
-                    {equipment.map(eq => (
+                    {getAvailableEquipment().map(eq => (
                       <option key={eq.id} value={eq.id}>{eq.name}</option>
                     ))}
                   </select>
@@ -906,9 +842,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Assegna a
@@ -941,21 +875,116 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     <option value="critical">Critica</option>
                   </select>
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Note aggiuntive (opzionale)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    placeholder="Note aggiuntive..."
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Note (opzionale)
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
+              {/* Attachments Section */}
+              <div className="border-t border-brand-coral/20 pt-6">
+                <h3 className="text-lg font-semibold text-brand-blue mb-4">Allegati (opzionale)</h3>
+                
+                {/* Upload Area */}
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 mb-4 ${
+                    dragOver
+                      ? 'border-brand-red bg-brand-red/5'
+                      : 'border-brand-gray/30 hover:border-brand-coral'
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <Upload size={32} className={`mx-auto mb-3 ${dragOver ? 'text-brand-red' : 'text-brand-gray'}`} />
+                  <h4 className="text-md font-medium text-brand-blue mb-2">
+                    Aggiungi allegati alla segnalazione
+                  </h4>
+                  <p className="text-brand-gray mb-3 text-sm">
+                    Trascina i file qui o clicca per selezionare
+                  </p>
+                  <p className="text-xs text-brand-gray mb-3">
+                    Formati supportati: immagini, PDF, documenti • Max 10MB per file
+                  </p>
+                  
+                  <input
+                    type="file"
+                    onChange={(e) => handleFileSelect(e.target.files)}
+                    className="hidden"
+                    id="attachment-upload"
+                    accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
+                    multiple
+                  />
+                  <label
+                    htmlFor="attachment-upload"
+                    className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 cursor-pointer inline-flex items-center space-x-2"
+                  >
+                    <Plus size={16} />
+                    <span>Seleziona File</span>
+                  </label>
+                </div>
+
+                {/* Selected Files List */}
+                {attachmentFiles.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-brand-blue">
+                      File selezionati ({attachmentFiles.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {attachmentFiles.map((attachmentFile) => (
+                        <div
+                          key={attachmentFile.id}
+                          className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20 p-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3 flex-1">
+                              <div className="p-2 bg-white rounded-lg shadow-sm">
+                                {getFileIcon(attachmentFile.file.type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Tag size={12} className="text-brand-coral" />
+                                  <input
+                                    type="text"
+                                    value={attachmentFile.label}
+                                    onChange={(e) => updateAttachmentLabel(attachmentFile.id, e.target.value)}
+                                    className="text-sm font-medium text-brand-blue bg-transparent border-none outline-none flex-1"
+                                    placeholder="Etichetta file..."
+                                  />
+                                </div>
+                                <p className="text-xs text-brand-gray truncate">
+                                  {attachmentFile.file.name}
+                                </p>
+                                <p className="text-xs text-brand-gray">
+                                  {formatFileSize(attachmentFile.file.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeAttachmentFile(attachmentFile.id)}
+                              className="p-1 text-brand-gray hover:text-brand-red transition-colors"
+                              title="Rimuovi file"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4">
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-brand-coral/20">
                 <button
                   type="button"
                   onClick={resetForm}
@@ -965,9 +994,15 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                 </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2"
                 >
-                  Crea Segnalazione
+                  <ClipboardList size={16} />
+                  <span>Crea Segnalazione</span>
+                  {attachmentFiles.length > 0 && (
+                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+                      +{attachmentFiles.length} file
+                    </span>
+                  )}
                 </button>
               </div>
             </form>
@@ -984,7 +1019,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
             <form onSubmit={handleUpdate} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Titolo
+                  Titolo Segnalazione
                 </label>
                 <input
                   type="text"
@@ -1016,7 +1051,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                   <select
                     required
                     value={formData.farm_id}
-                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, equipment_id: '' })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                   >
                     <option value="">Seleziona allevamento</option>
@@ -1034,14 +1069,17 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     value={formData.equipment_id}
                     onChange={(e) => setFormData({ ...formData, equipment_id: e.target.value })}
                     className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    disabled={!formData.farm_id}
                   >
                     <option value="">Seleziona attrezzatura</option>
-                    {equipment.map(eq => (
+                    {getAvailableEquipment().map(eq => (
                       <option key={eq.id} value={eq.id}>{eq.name}</option>
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Fornitore (opzionale)
@@ -1057,9 +1095,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Assegna a
@@ -1076,27 +1112,27 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Urgenza
-                  </label>
-                  <select
-                    value={formData.urgency}
-                    onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="low">Bassa</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta</option>
-                    <option value="critical">Critica</option>
-                  </select>
-                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Note (opzionale)
+                  Urgenza
+                </label>
+                <select
+                  value={formData.urgency}
+                  onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="low">Bassa</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="critical">Critica</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Note aggiuntive (opzionale)
                 </label>
                 <textarea
                   rows={2}
@@ -1126,127 +1162,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
         </div>
       )}
 
-      {/* Quote Request Modal */}
-      {showQuoteModal && selectedReportForQuote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-brand-blue mb-4">Richiedi Preventivi</h2>
-            
-            <div className="mb-4 p-4 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
-              <h3 className="font-medium text-brand-blue">Segnalazione: {selectedReportForQuote.title}</h3>
-              <p className="text-sm text-brand-gray mt-1">{selectedReportForQuote.description}</p>
-            </div>
-            
-            <form onSubmit={handleQuoteSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Fornitori (seleziona uno o più)
-                </label>
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-brand-gray/30 rounded-lg p-3">
-                  {suppliers.map(supplier => (
-                    <label key={supplier.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={quoteFormData.suppliers.includes(supplier.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setQuoteFormData({
-                              ...quoteFormData,
-                              suppliers: [...quoteFormData.suppliers, supplier.id]
-                            });
-                          } else {
-                            setQuoteFormData({
-                              ...quoteFormData,
-                              suppliers: quoteFormData.suppliers.filter(id => id !== supplier.id)
-                            });
-                          }
-                        }}
-                        className="h-4 w-4 text-brand-red focus:ring-brand-red border-brand-gray/30 rounded"
-                      />
-                      <span className="text-sm">{supplier.name} ({supplier.email})</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Titolo Preventivo
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={quoteFormData.title}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Descrizione
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={quoteFormData.description}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Scadenza (opzionale)
-                  </label>
-                  <input
-                    type="date"
-                    value={quoteFormData.due_date}
-                    onChange={(e) => setQuoteFormData({ ...quoteFormData, due_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Note aggiuntive (opzionale)
-                </label>
-                <textarea
-                  rows={2}
-                  value={quoteFormData.notes}
-                  onChange={(e) => setQuoteFormData({ ...quoteFormData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={resetQuoteForm}
-                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2"
-                >
-                  <Mail size={16} />
-                  <span>Invia Richieste ({quoteFormData.suppliers.length})</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Report Details Modal */}
+      {/* Attachments Manager */}
       {selectedReportId && (
-        <ReportDetails
-          reportId={selectedReportId}
-          reportTitle={selectedReportTitle}
+        <AttachmentsManager
+          entityType="report"
+          entityId={selectedReportId}
+          entityName={selectedReportTitle}
           onClose={() => {
             setSelectedReportId(null);
             setSelectedReportTitle('');
