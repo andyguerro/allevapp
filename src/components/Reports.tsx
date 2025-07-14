@@ -300,16 +300,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
     if (attachmentFiles.length === 0) return;
 
     try {
-      // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.warn('No active user found for attachments:', userError);
+      if (!currentUser) {
+        console.warn('No current user for attachments');
         return; // Non bloccare la creazione della segnalazione
       }
 
@@ -341,7 +333,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
               custom_label: attachmentFile.label || attachmentFile.file.name,
               file_size: attachmentFile.file.size,
               mime_type: attachmentFile.file.type,
-              created_by: defaultUser.id
+              created_by: currentUser.id
             });
 
           if (dbError) {
