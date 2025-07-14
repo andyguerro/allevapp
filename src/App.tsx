@@ -38,8 +38,6 @@ const App: React.FC = () => {
         return <MaintenanceCalendar />;
       case 'facilities':
         return <FacilitiesManagement />;
-      case 'diagnostics':
-        return <StorageDiagnostics />;
       case 'settings':
         return <Settings />;
       default:

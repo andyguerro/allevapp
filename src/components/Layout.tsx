@@ -19,7 +19,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
     { id: 'projects', label: 'Progetti', icon: FolderOpen },
     { id: 'quotes', label: 'Preventivi', icon: FileText },
     { id: 'maintenance', label: 'Calendario', icon: Calendar },
-    { id: 'diagnostics', label: 'Diagnostica', icon: Database },
     { id: 'settings', label: 'Impostazioni', icon: Settings },
   ];
 
