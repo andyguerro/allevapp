@@ -97,39 +97,10 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
 
     setUploading(true);
     try {
-      // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.error('No active user found:', userError);
-        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
-        return;
-      }
-
       // Genera un nome file unico
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${entityType}/${entityId}/${fileName}`;
-
-      // Check if storage bucket exists and is accessible
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('Storage not available:', bucketsError);
-        alert('⚠️ CONFIGURAZIONE RICHIESTA\n\nIl sistema di storage per gli allegati non è ancora configurato.\n\nPer abilitare il caricamento degli allegati:\n\n1. Vai su Supabase Dashboard\n2. Sezione "Storage"\n3. Crea un bucket chiamato "attachments"\n4. Configura le policy di accesso\n\nContatta l\'amministratore per completare la configurazione.');
-        return;
-      }
-
-      const attachmentsBucket = buckets?.find(bucket => bucket.name === 'attachments');
-      if (!attachmentsBucket) {
-        alert('⚠️ BUCKET MANCANTE\n\nIl bucket "attachments" non esiste.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → Crea nuovo bucket\n3. Nome: "attachments"\n4. Pubblico: No\n5. Configura le policy di accesso\n\nContatta l\'amministratore per completare la configurazione.');
-        return;
-      }
 
       // Try to upload file to Supabase Storage
       try {
@@ -140,8 +111,10 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         if (uploadError) {
           console.error('Upload error:', uploadError);
           
-          if (uploadError.message?.includes('new row violates row-level security policy')) {
-            alert('⚠️ POLICY DI SICUREZZA\n\nLe policy di sicurezza del bucket impediscono il caricamento.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → attachments → Policies\n3. Aggiungi policy per INSERT e SELECT\n4. Permetti accesso agli utenti autenticati\n\nContatta l\'amministratore per configurare le policy.');
+          if (uploadError.message?.includes('new row violates row-level security policy') || 
+              uploadError.message?.includes('JWT expired') ||
+              uploadError.message?.includes('Invalid JWT')) {
+            alert('⚠️ POLICY DI SICUREZZA\n\nLe policy di sicurezza del bucket impediscono il caricamento.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → attachments → Policies\n3. Crea policy con target role "public" (non "authenticated")\n4. USING expression: true\n5. Oppure disabilita RLS temporaneamente\n\nIl problema è che non c\'è autenticazione attiva.');
             return;
           }
           
@@ -149,8 +122,39 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         }
       } catch (storageError) {
         console.error('Storage error:', storageError);
-        alert('⚠️ ERRORE STORAGE\n\nProblema nel caricamento del file:\n\n' + storageError.message + '\n\nVerifica:\n- Dimensione file (max 10MB)\n- Formato file supportato\n- Configurazione storage Supabase\n\nContatta l\'amministratore se il problema persiste.');
+        alert('⚠️ ERRORE STORAGE\n\nProblema nel caricamento del file:\n\n' + storageError.message + '\n\nSoluzioni:\n1. Verifica policy bucket (usa "public" invece di "authenticated")\n2. Controlla dimensione file (max 10MB)\n3. Verifica formato file supportato\n4. Considera di disabilitare RLS temporaneamente');
         return;
+      }
+
+      // Get a default user from the users table since auth is not configured
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.error('No active user found:', userError);
+        // Try to create a default user for attachments
+        const { data: newUser, error: createUserError } = await supabase
+          .from('users')
+          .insert({
+            full_name: 'Sistema AllevApp',
+            email: 'sistema@allevapp.local',
+            role: 'admin',
+            active: true
+          })
+          .select()
+          .single();
+
+        if (createUserError) {
+          console.error('Cannot create default user:', createUserError);
+          alert('⚠️ UTENTE MANCANTE\n\nNon è possibile salvare i metadati dell\'allegato.\n\nSoluzione:\n1. Vai su Impostazioni → Utenti\n2. Crea almeno un utente attivo\n3. Riprova il caricamento');
+          return;
+        }
+        
+        defaultUser = newUser;
       }
 
       // Salva i metadati nel database
@@ -178,11 +182,11 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
       
       // Gestisci errori specifici del database
       if (error.message?.includes('new row violates row-level security policy')) {
-        alert('⚠️ POLICY DATABASE\n\nLe policy di sicurezza della tabella attachments impediscono l\'inserimento.\n\nContatta l\'amministratore per configurare le policy RLS.');
+        alert('⚠️ POLICY DATABASE\n\nLe policy di sicurezza della tabella attachments impediscono l\'inserimento.\n\nSoluzione:\n1. Vai su Supabase Dashboard\n2. Database → attachments → RLS\n3. Crea policy con target role "public"\n4. Oppure disabilita RLS temporaneamente');
       } else if (error.message?.includes('duplicate key value')) {
         alert('Errore: File già esistente. Riprova con un nome diverso.');
       } else {
-        alert('⚠️ ERRORE GENERICO\n\nErrore nel caricamento del file:\n\n' + error.message + '\n\nVerifica la connessione e riprova.\nSe il problema persiste, contatta l\'amministratore.');
+        alert('⚠️ ERRORE GENERICO\n\nErrore nel caricamento del file:\n\n' + error.message + '\n\nVerifica:\n1. Policy bucket e tabella configurate per "public"\n2. Connessione internet\n3. Configurazione Supabase');
       }
     } finally {
       setUploading(false);
