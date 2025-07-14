@@ -315,9 +315,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           urgency: formData.urgency,
           notes: formData.notes || null
         })
+        .eq('id', editingReport.id)
         .select()
         .single();
-        .eq('id', editingReport.id);
 
       if (error) throw error;
 
