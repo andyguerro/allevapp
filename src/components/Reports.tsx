@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
-import SearchFilters from './SearchFilters';
-
-interface Option {
-  value: string;
-  label: string;
-}
+import SearchFilters, { Option } from './SearchFilters';
 
 interface ReportsProps {
   initialFilters?: {
@@ -358,17 +353,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     e.preventDefault();
     
     try {
-      // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.error('No active user found:', userError);
-        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
+      if (!currentUser) {
+        alert('Errore: Nessun utente selezionato.');
         return;
       }
 
@@ -381,7 +367,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
           equipment_id: formData.equipment_id || null,
           supplier_id: formData.supplier_id || null,
           assigned_to: formData.assigned_to,
-          created_by: defaultUser.id,
+          created_by: currentUser.id,
           urgency: formData.urgency,
           notes: formData.notes || null
         })
@@ -476,6 +462,23 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     });
     setEditingReport(null);
     setShowEditModal(false);
+  };
+
+  const handleDelete = async (reportId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa segnalazione?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione segnalazione:', error);
+      alert('Errore nell\'eliminazione della segnalazione');
+    }
   };
 
   const handleFilterChange = (filterId: string, selected: Option[]) => {
@@ -747,8 +750,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                 >
                   <Edit size={18} />
                 </button>
-                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10">
-                  <Eye size={18} />
+                <button 
+                  onClick={() => handleDelete(report.id)}
+                  className="p-2 text-brand-gray hover:text-brand-red transition-colors rounded-lg hover:bg-brand-red/10"
+                  title="Elimina segnalazione"
+                >
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
