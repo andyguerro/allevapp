@@ -211,7 +211,14 @@ export default function Equipment() {
         : null;
 
       const equipmentData = {
-        ...formData,
+        name: formData.name,
+        model: formData.model || null,
+        serial_number: formData.serial_number || null,
+        farm_id: formData.farm_id,
+        status: formData.status,
+        description: formData.description || null,
+        last_maintenance: formData.last_maintenance || null,
+        maintenance_interval_days: formData.maintenance_interval_days,
         next_maintenance_due: nextMaintenanceDue
       };
 
