@@ -9,6 +9,7 @@ import Projects from './components/Projects';
 import MaintenanceCalendar from './components/MaintenanceCalendar';
 import FacilitiesManagement from './components/FacilitiesManagement';
 import Settings from './components/Settings';
+import StorageDiagnostics from './components/StorageDiagnostics';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -37,6 +38,8 @@ const App: React.FC = () => {
         return <MaintenanceCalendar />;
       case 'facilities':
         return <FacilitiesManagement />;
+      case 'diagnostics':
+        return <StorageDiagnostics />;
       case 'settings':
         return <Settings />;
       default:
