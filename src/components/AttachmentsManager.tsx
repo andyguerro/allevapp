@@ -97,11 +97,17 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
 
     setUploading(true);
     try {
-      // Get the current authenticated user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        alert('Devi essere autenticato per caricare file');
+      // Get a default user from the users table since auth is not configured
+      const { data: defaultUser, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('active', true)
+        .limit(1)
+        .single();
+
+      if (userError || !defaultUser) {
+        console.error('No active user found:', userError);
+        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
         return;
       }
 
@@ -110,14 +116,41 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${entityType}/${entityId}/${fileName}`;
 
-      // Upload file to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('attachments')
-        .upload(filePath, selectedFile);
+      // Check if storage bucket exists and is accessible
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error('Storage not available:', bucketsError);
+        alert('⚠️ CONFIGURAZIONE RICHIESTA\n\nIl sistema di storage per gli allegati non è ancora configurato.\n\nPer abilitare il caricamento degli allegati:\n\n1. Vai su Supabase Dashboard\n2. Sezione "Storage"\n3. Crea un bucket chiamato "attachments"\n4. Configura le policy di accesso\n\nContatta l\'amministratore per completare la configurazione.');
+        return;
+      }
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
+      const attachmentsBucket = buckets?.find(bucket => bucket.name === 'attachments');
+      if (!attachmentsBucket) {
+        alert('⚠️ BUCKET MANCANTE\n\nIl bucket "attachments" non esiste.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → Crea nuovo bucket\n3. Nome: "attachments"\n4. Pubblico: No\n5. Configura le policy di accesso\n\nContatta l\'amministratore per completare la configurazione.');
+        return;
+      }
+
+      // Try to upload file to Supabase Storage
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, selectedFile);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          
+          if (uploadError.message?.includes('new row violates row-level security policy')) {
+            alert('⚠️ POLICY DI SICUREZZA\n\nLe policy di sicurezza del bucket impediscono il caricamento.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → attachments → Policies\n3. Aggiungi policy per INSERT e SELECT\n4. Permetti accesso agli utenti autenticati\n\nContatta l\'amministratore per configurare le policy.');
+            return;
+          }
+          
+          throw uploadError;
+        }
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+        alert('⚠️ ERRORE STORAGE\n\nProblema nel caricamento del file:\n\n' + storageError.message + '\n\nVerifica:\n- Dimensione file (max 10MB)\n- Formato file supportato\n- Configurazione storage Supabase\n\nContatta l\'amministratore se il problema persiste.');
+        return;
       }
 
       // Salva i metadati nel database
@@ -131,7 +164,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
           custom_label: customLabel || selectedFile.name,
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
-          created_by: user.id
+          created_by: defaultUser.id
         });
 
       if (dbError) throw dbError;
@@ -143,13 +176,13 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
     } catch (error) {
       console.error('Errore nel caricamento file:', error);
       
-      // Gestisci errori specifici
-      if (error.message?.includes('Bucket not found')) {
-        alert('Errore: Il bucket per gli allegati non è configurato. Contatta l\'amministratore.');
-      } else if (error.message?.includes('The resource was not found')) {
-        alert('Errore: Servizio di storage non disponibile. Riprova più tardi.');
+      // Gestisci errori specifici del database
+      if (error.message?.includes('new row violates row-level security policy')) {
+        alert('⚠️ POLICY DATABASE\n\nLe policy di sicurezza della tabella attachments impediscono l\'inserimento.\n\nContatta l\'amministratore per configurare le policy RLS.');
+      } else if (error.message?.includes('duplicate key value')) {
+        alert('Errore: File già esistente. Riprova con un nome diverso.');
       } else {
-        alert('Errore nel caricamento del file. Verifica la connessione e riprova.');
+        alert('⚠️ ERRORE GENERICO\n\nErrore nel caricamento del file:\n\n' + error.message + '\n\nVerifica la connessione e riprova.\nSe il problema persiste, contatta l\'amministratore.');
       }
     } finally {
       setUploading(false);
@@ -320,6 +353,19 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
               Formati supportati: immagini, PDF, documenti Word, Excel, file di testo<br/>
               Dimensione massima: 10MB
             </p>
+            
+            {/* Storage Status Warning */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+              <div className="flex items-start space-x-2">
+                <div className="text-yellow-600 mt-0.5">⚠️</div>
+                <div className="text-sm text-yellow-800">
+                  <strong>Nota:</strong> Se il caricamento non funziona, potrebbe essere necessario configurare il sistema di storage in Supabase.
+                  <br/>
+                  <span className="text-xs">Contatta l'amministratore per la configurazione del bucket "attachments".</span>
+                </div>
+              </div>
+            </div>
+            
             <input
               type="file"
               onChange={(e) => handleFileSelect(e.target.files)}
