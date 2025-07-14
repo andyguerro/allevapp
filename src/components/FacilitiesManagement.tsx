@@ -24,7 +24,11 @@ interface Farm {
   name: string;
 }
 
-const FacilitiesManagement: React.FC = () => {
+interface FacilitiesManagementProps {
+  currentUser?: any;
+}
+
+const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser }) => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

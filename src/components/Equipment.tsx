@@ -145,17 +145,9 @@ export default function Equipment() {
     if (attachmentFiles.length === 0) return;
 
     try {
-      // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.warn('No active user found for attachments:', userError);
-        return; // Non bloccare la creazione dell'attrezzatura
+      if (!currentUser) {
+        console.warn('No current user for attachments');
+        return;
       }
 
       for (const attachmentFile of attachmentFiles) {
@@ -186,7 +178,7 @@ export default function Equipment() {
               custom_label: attachmentFile.label || attachmentFile.file.name,
               file_size: attachmentFile.file.size,
               mime_type: attachmentFile.file.type,
-              created_by: defaultUser.id
+              created_by: currentUser.id
             });
 
           if (dbError) {

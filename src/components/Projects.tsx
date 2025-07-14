@@ -189,17 +189,8 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
     e.preventDefault();
     
     try {
-      // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.error('No active user found:', userError);
-        alert('Errore: Nessun utente attivo trovato nel sistema. Configura prima gli utenti nelle impostazioni.');
+      if (!currentUser) {
+        alert('Errore: Nessun utente selezionato.');
         return;
       }
 
@@ -210,7 +201,7 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
           description: formData.description || null,
           farm_id: formData.farm_id,
           status: formData.status,
-          created_by: defaultUser.id
+          created_by: currentUser.id
         });
 
       if (error) throw error;

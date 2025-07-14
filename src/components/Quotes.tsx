@@ -194,6 +194,11 @@ const Quotes: React.FC = () => {
     e.preventDefault();
     
     try {
+      if (!currentUser) {
+        alert('Errore: Nessun utente selezionato.');
+        return;
+      }
+
       const { error } = await supabase
         .from('quotes')
         .insert({
@@ -206,7 +211,7 @@ const Quotes: React.FC = () => {
           amount: formData.amount ? parseFloat(formData.amount) : null,
           due_date: formData.due_date || null,
           notes: formData.notes || null,
-          created_by: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
+          created_by: currentUser.id
         });
 
       if (error) throw error;
