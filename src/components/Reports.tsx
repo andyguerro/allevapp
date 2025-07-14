@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
-import SearchFilters, { Option } from './SearchFilters';
 
 interface ReportsProps {
   initialFilters?: {
     filterStatus?: string;
     filterUrgency?: string;
   };
+  currentUser?: any;
 }
 
 interface Report {
@@ -60,8 +60,7 @@ interface AttachmentFile {
   id: string;
 }
 
-const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
-  // Helper functions - moved before useState to avoid initialization errors
+const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'open': return 'Aperta';
