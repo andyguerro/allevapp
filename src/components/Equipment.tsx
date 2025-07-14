@@ -242,11 +242,11 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
   const updateMaintenanceDate = async (equipmentId: string, newDate: string) => {
     try {
       // Calculate next maintenance date based on interval
-      const equipment = equipment.find(e => e.id === equipmentId);
-      if (!equipment) return;
+      const equipmentItem = equipment.find(e => e.id === equipmentId);
+      if (!equipmentItem) return;
 
       const nextDate = new Date(newDate);
-      nextDate.setDate(nextDate.getDate() + equipment.maintenance_interval_days);
+      nextDate.setDate(nextDate.getDate() + equipmentItem.maintenance_interval_days);
 
       const { error } = await supabase
         .from('equipment')
@@ -495,7 +495,369 @@ const Equipment: React.FC<EquipmentProps> = ({ initialFilters = {} }) => {
                       {isMaintenanceOverdue(item.next_maintenance_due) ? 'Manutenzione Scaduta' : 'Manutenzione in Scadenza'}
                     </span>
                   </div>
-                  <button
+                  <Paperclip size={16} />
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelectedEquipmentId(item.id);
+                    setSelectedEquipmentName(item.name);
+                  }}
+                  className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                  title="Gestisci allegati"
+                >
+                  <Paperclip size={16} />
+                </button>
+                <button 
+                  onClick={() => handleEdit(item)}
+                  className="p-2 text-gray-400 hover:text-green-600 transition-colors"
+                  title="Modifica attrezzatura"
+                >
+                  <Edit size={16} />
+                </button>
+              </div>
+              <div className="text-xs text-gray-500">
+                {new Date(item.created_at).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Create Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Nuova Attrezzatura</h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Nome Attrezzatura
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Modello
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model}
+                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Numero di Serie
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.serial_number}
+                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Allevamento
+                </label>
+                <select
+                  required
+                  value={formData.farm_id}
+                  onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="">Seleziona allevamento</option>
+                  {farms.map(farm => (
+                    <option key={farm.id} value={farm.id}>{farm.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Stato
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="working">Funzionante</option>
+                    <option value="not_working">Non Funzionante</option>
+                    <option value="repaired">Riparato</option>
+                    <option value="regenerated">Rigenerato</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Ultima Manutenzione
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.last_maintenance}
+                    onChange={(e) => setFormData({ ...formData, last_maintenance: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Prossima Manutenzione
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.next_maintenance_due}
+                    onChange={(e) => setFormData({ ...formData, next_maintenance_due: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Intervallo Manutenzione (giorni)
+                </label>
+                <select
+                  value={formData.maintenance_interval_days}
+                  onChange={(e) => setFormData({ ...formData, maintenance_interval_days: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value={30}>30 giorni (Mensile)</option>
+                  <option value={90}>90 giorni (Trimestrale)</option>
+                  <option value={180}>180 giorni (Semestrale)</option>
+                  <option value={365}>365 giorni (Annuale)</option>
+                  <option value={730}>730 giorni (Biennale)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Descrizione
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
+                >
+                  Crea Attrezzatura
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingEquipment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Modifica Attrezzatura</h2>
+            
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Nome Attrezzatura
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Modello
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model}
+                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Numero di Serie
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.serial_number}
+                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Allevamento
+                  </label>
+                  <select
+                    required
+                    value={formData.farm_id}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona allevamento</option>
+                    {farms.map(farm => (
+                      <option key={farm.id} value={farm.id}>{farm.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Stato
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="working">Funzionante</option>
+                    <option value="not_working">Non Funzionante</option>
+                    <option value="repaired">Riparato</option>
+                    <option value="regenerated">Rigenerato</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Ultima Manutenzione
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.last_maintenance}
+                    onChange={(e) => setFormData({ ...formData, last_maintenance: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Prossima Manutenzione
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.next_maintenance_due}
+                    onChange={(e) => setFormData({ ...formData, next_maintenance_due: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Intervallo Manutenzione (giorni)
+                </label>
+                <select
+                  value={formData.maintenance_interval_days}
+                  onChange={(e) => setFormData({ ...formData, maintenance_interval_days: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value={30}>30 giorni (Mensile)</option>
+                  <option value={90}>90 giorni (Trimestrale)</option>
+                  <option value={180}>180 giorni (Semestrale)</option>
+                  <option value={365}>365 giorni (Annuale)</option>
+                  <option value={730}>730 giorni (Biennale)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Descrizione
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetEditForm}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
+                >
+                  Aggiorna Attrezzatura
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Attachments Manager */}
+      {selectedEquipmentId && (
+        <AttachmentsManager
+          entityType="equipment"
+          entityId={selectedEquipmentId}
+          entityName={selectedEquipmentName}
+          onClose={() => {
+            setSelectedEquipmentId(null);
+            setSelectedEquipmentName('');
+          }}
+        />
+      )}
+
+      {filteredEquipment.length === 0 && (
+        <div className="text-center py-12">
+          <Package size={48} className="mx-auto text-brand-gray mb-4" />
+          <h3 className="text-lg font-medium text-brand-blue mb-2">Nessuna attrezzatura trovata</h3>
+          <p className="text-brand-gray">Prova a modificare i filtri di ricerca o aggiungi una nuova attrezzatura.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Equipment;
                     onClick={() => updateMaintenanceDate(item.id, new Date().toISOString().split('T')[0])}
                     className="px-3 py-1 bg-brand-blue text-white rounded-lg text-xs hover:bg-brand-blue-dark transition-colors"
                   >
