@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, Edit, Eye, AlertTriangle, Clock, CheckCircle, Send, Paperclip, Mail } from 'lucide-react';
+import { Plus, ClipboardList, Edit, Eye, AlertTriangle, Clock, CheckCircle, Send, Paperclip, Mail, Upload, File, Image, FileText, X, Tag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReportDetails from './ReportDetails';
 import SearchFilters, { Option } from './SearchFilters';
@@ -77,6 +77,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
   const [loading, setLoading] = useState(true);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedReportForQuote, setSelectedReportForQuote] = useState<Report | null>(null);
+
+  // Attachment states for new report
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
+  const [dragOver, setDragOver] = useState(false);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -253,7 +258,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
         createdBy = user.id;
       }
 
-      const { error } = await supabase
+      const { data: newReport, error } = await supabase
         .from('reports')
         .insert({
           title: formData.title,
@@ -310,9 +315,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
           urgency: formData.urgency,
           notes: formData.notes || null
         })
+        .select()
+        .single();
         .eq('id', editingReport.id);
 
       if (error) throw error;
+
+      // Upload attachments if any
+      if (newReport && selectedFiles.length > 0) {
+        await uploadAttachments(newReport.id);
+      }
 
       await fetchData();
       resetEditForm();
@@ -333,6 +345,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {} }) => {
       urgency: 'medium',
       notes: ''
     });
+    setSelectedFiles([]);
+    setFileLabels({});
     setShowCreateModal(false);
   };
 
