@@ -58,7 +58,7 @@ const App: React.FC = () => {
       case 'projects':
         return <Projects initialFilters={pageFilters} />;
       case 'quotes':
-        return <Quotes />;
+        return <Quotes currentUser={currentUser} />;
       case 'orders':
         return <Orders />;
       case 'farms':

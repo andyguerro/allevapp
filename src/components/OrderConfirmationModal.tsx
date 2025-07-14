@@ -3,6 +3,7 @@ import { X, FileText, Calendar, DollarSign, Building, Truck, MapPin, Download, P
 import { supabase } from '../lib/supabase';
 
 interface OrderConfirmationModalProps {
+  currentUser: any;
   quote: {
     id: string;
     title: string;
@@ -32,6 +33,7 @@ interface OrderConfirmation {
 }
 
 const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({ 
+  currentUser,
   quote, 
   onClose, 
   onConfirm 
@@ -93,9 +95,8 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
   const handleConfirmOrder = async () => {
     setLoading(true);
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) throw new Error('Utente non autenticato');
+      // Use the current user from props
+      if (!currentUser) throw new Error('Utente non selezionato');
 
       // Get farm details
       const { data: farm, error: farmError } = await supabase
@@ -135,7 +136,7 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
           order_date: new Date().toISOString().split('T')[0],
           delivery_date: orderData.delivery_date || null,
           notes: orderData.notes || null,
-          created_by: user.id
+          created_by: currentUser.id
         })
         .select()
         .single();

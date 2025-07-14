@@ -50,7 +50,11 @@ interface Farm {
   company: string;
 }
 
-const Quotes: React.FC = () => {
+interface QuotesProps {
+  currentUser: any;
+}
+
+const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -955,6 +959,7 @@ const Quotes: React.FC = () => {
       {showOrderModal && selectedQuoteForOrder && (
         <OrderConfirmationModal
           quote={selectedQuoteForOrder}
+          currentUser={currentUser}
           onClose={() => {
             setShowOrderModal(false);
             setSelectedQuoteForOrder(null);
