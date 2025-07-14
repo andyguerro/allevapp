@@ -127,7 +127,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
       }
 
       // Get a default user from the users table since auth is not configured
-      const { data: defaultUser, error: userError } = await supabase
+      let { data: defaultUser, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('active', true)
