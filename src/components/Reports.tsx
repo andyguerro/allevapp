@@ -481,6 +481,20 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     }
   };
 
+  const updateReportStatus = async (reportId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({ status: newStatus })
+        .eq('id', reportId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento stato segnalazione:', error);
+      alert('Errore nell\'aggiornamento dello stato');
+    }
+  };
   const handleFilterChange = (filterId: string, selected: Option[]) => {
     setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
   };
@@ -758,6 +772,35 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                   <Trash2 size={18} />
                 </button>
               </div>
+              
+              {/* Status Change Buttons */}
+              {report.status !== 'closed' && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-brand-blue">Cambia stato:</span>
+                  {report.status !== 'in_progress' && (
+                    <button
+                      onClick={() => updateReportStatus(report.id, 'in_progress')}
+                      className="px-3 py-1 bg-brand-coral/10 text-brand-coral rounded-lg text-xs hover:bg-brand-coral/20 transition-colors"
+                    >
+                      In Corso
+                    </button>
+                  )}
+                  {report.status !== 'resolved' && (
+                    <button
+                      onClick={() => updateReportStatus(report.id, 'resolved')}
+                      className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-lg text-xs hover:bg-brand-blue/20 transition-colors"
+                    >
+                      Risolto
+                    </button>
+                  )}
+                  <button
+                    onClick={() => updateReportStatus(report.id, 'closed')}
+                    className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs hover:bg-green-200 transition-colors"
+                  >
+                    Chiudi
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

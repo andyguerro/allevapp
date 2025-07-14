@@ -97,6 +97,18 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
 
     setUploading(true);
     try {
+      // Get current user from localStorage (since we're not using Supabase auth)
+      const currentUserStr = localStorage.getItem('allevapp_current_user');
+      let currentUser = null;
+      
+      if (currentUserStr) {
+        try {
+          currentUser = JSON.parse(currentUserStr);
+        } catch (error) {
+          console.error('Error parsing current user:', error);
+        }
+      }
+
       // Genera un nome file unico
       const fileExt = selectedFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -126,35 +138,24 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         return;
       }
 
-      // Get a default user from the users table since auth is not configured
-      let { data: defaultUser, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('active', true)
-        .limit(1)
-        .single();
-
-      if (userError || !defaultUser) {
-        console.error('No active user found:', userError);
-        // Try to create a default user for attachments
-        const { data: newUser, error: createUserError } = await supabase
+      // Use current user or get a default user from the users table
+      let userId = currentUser?.id;
+      
+      if (!userId) {
+        const { data: defaultUser, error: userError } = await supabase
           .from('users')
-          .insert({
-            full_name: 'Sistema AllevApp',
-            email: 'sistema@allevapp.local',
-            role: 'admin',
-            active: true
-          })
-          .select()
+          .select('id')
+          .eq('active', true)
+          .limit(1)
           .single();
 
-        if (createUserError) {
-          console.error('Cannot create default user:', createUserError);
-          alert('⚠️ UTENTE MANCANTE\n\nNon è possibile salvare i metadati dell\'allegato.\n\nSoluzione:\n1. Vai su Impostazioni → Utenti\n2. Crea almeno un utente attivo\n3. Riprova il caricamento');
+        if (userError || !defaultUser) {
+          console.error('No active user found:', userError);
+          alert('⚠️ UTENTE MANCANTE\n\nNon è possibile salvare i metadati dell\'allegato.\n\nSoluzione:\n1. Effettua il login\n2. Oppure vai su Impostazioni → Utenti e crea almeno un utente attivo\n3. Riprova il caricamento');
           return;
         }
         
-        defaultUser = newUser;
+        userId = defaultUser.id;
       }
 
       // Salva i metadati nel database
@@ -168,7 +169,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
           custom_label: customLabel || selectedFile.name,
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
-          created_by: defaultUser.id
+          created_by: userId
         });
 
       if (dbError) throw dbError;

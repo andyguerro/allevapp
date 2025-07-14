@@ -145,9 +145,16 @@ export default function Equipment() {
     if (attachmentFiles.length === 0) return;
 
     try {
-      if (!currentUser) {
-        console.warn('No current user for attachments');
-        return;
+      // Get current user from localStorage
+      const currentUserStr = localStorage.getItem('allevapp_current_user');
+      let currentUser = null;
+      
+      if (currentUserStr) {
+        try {
+          currentUser = JSON.parse(currentUserStr);
+        } catch (error) {
+          console.error('Error parsing current user:', error);
+        }
       }
 
       for (const attachmentFile of attachmentFiles) {
@@ -167,6 +174,25 @@ export default function Equipment() {
             continue; // Continua con gli altri file
           }
 
+          // Use current user or get a default user
+          let userId = currentUser?.id;
+          
+          if (!userId) {
+            const { data: defaultUser, error: userError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('active', true)
+              .limit(1)
+              .single();
+
+            if (userError || !defaultUser) {
+              console.warn('No active user found for attachment metadata');
+              continue;
+            }
+            
+            userId = defaultUser.id;
+          }
+
           // Salva i metadati nel database
           const { error: dbError } = await supabase
             .from('attachments')
@@ -178,7 +204,7 @@ export default function Equipment() {
               custom_label: attachmentFile.label || attachmentFile.file.name,
               file_size: attachmentFile.file.size,
               mime_type: attachmentFile.file.type,
-              created_by: currentUser.id
+              created_by: userId
             });
 
           if (dbError) {
