@@ -682,6 +682,47 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
 
           {/* Order Form */}
           <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <Building size={16} className="inline mr-2" />
+                  Azienda
+                </label>
+                <input
+                  type="text"
+                  value={previewOrder?.company || ''}
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <FileText size={16} className="inline mr-2" />
+                  Numero Ordine
+                </label>
+                <input
+                  type="text"
+                  value={previewOrder?.order_number || ''}
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <Calendar size={16} className="inline mr-2" />
+                  Data Ordine
+                </label>
+                <input
+                  type="date"
+                  value={new Date().toISOString().split('T')[0]}
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
@@ -695,7 +736,62 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <Building size={16} className="inline mr-2" />
+                  Fornitore
+                </label>
+                <input
+                  type="text"
+                  value={quote.supplier_name || ''}
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  <Building size={16} className="inline mr-2" />
+                  Allevamento
+                </label>
+                <input
+                  type="text"
+                  value={quote.farm_name || ''}
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-brand-blue mb-2">
+                <FileText size={16} className="inline mr-2" />
+                Oggetto Ordine
+              </label>
+              <input
+                type="text"
+                value={quote.title}
+                disabled
+                className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-brand-blue mb-2">
+                Descrizione Ordine
+              </label>
+              <textarea
+                rows={3}
+                value={quote.description}
+                disabled
+                className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
                   <DollarSign size={16} className="inline mr-2" />
@@ -707,6 +803,18 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
                   value={orderData.total_amount}
                   onChange={(e) => setOrderData({ ...orderData, total_amount: parseFloat(e.target.value) || 0 })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Stato Ordine
+                </label>
+                <input
+                  type="text"
+                  value="In Attesa"
+                  disabled
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-600"
                 />
               </div>
             </div>
