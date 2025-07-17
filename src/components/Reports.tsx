@@ -90,6 +90,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
   const [selectedReportForCalendar, setSelectedReportForCalendar] = useState<Report | null>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [selectedReportForDetail, setSelectedReportForDetail] = useState<string | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -151,6 +155,37 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
 
   const updateAttachmentLabel = (id: string, label: string) => {
     setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      farm_id: '',
+      equipment_id: '',
+      supplier_id: '',
+      assigned_to: '',
+      urgency: 'medium',
+      notes: ''
+    });
+    setAttachmentFiles([]);
+    setShowCreateModal(false);
+  };
+
+  const resetEditForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      farm_id: '',
+      equipment_id: '',
+      supplier_id: '',
+      assigned_to: '',
+      urgency: 'medium',
+      notes: ''
+    });
+    setAttachmentFiles([]);
+    setEditingReport(null);
+    setShowEditModal(false);
   };
 
   const uploadAttachments = async (reportId: string) => {
@@ -471,6 +506,70 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
 
       if (error) throw error;
 
+      await fetchReports();
+      resetEditForm();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento segnalazione:', error);
+      alert('Errore nell\'aggiornamento della segnalazione');
+    }
+  };
+
+  const handleDelete = async (reportId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa segnalazione? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+      await fetchReports();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione segnalazione:', error);
+      alert('Errore nell\'eliminazione della segnalazione');
+    }
+  };
+
+  const handleEdit = (report: Report) => {
+    setFormData({
+      title: report.title,
+      description: report.description,
+      farm_id: report.farm_id,
+      equipment_id: report.equipment_id || '',
+      supplier_id: report.supplier_id || '',
+      assigned_to: report.assigned_to,
+      urgency: report.urgency,
+      notes: report.notes || ''
+    });
+    setEditingReport(report);
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingReport) return;
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .update({
+          title: formData.title,
+          description: formData.description,
+          farm_id: formData.farm_id,
+          equipment_id: formData.equipment_id || null,
+          supplier_id: formData.supplier_id || null,
+          assigned_to: formData.assigned_to,
+          urgency: formData.urgency,
+          notes: formData.notes || null
+        })
+        .eq('id', editingReport.id);
+
+      if (error) throw error;
+
       await fetchData();
       resetEditForm();
     } catch (error) {
@@ -674,7 +773,20 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
-           onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setFormData({
+              title: '',
+              description: '',
+              farm_id: '',
+              equipment_id: '',
+              supplier_id: '',
+              assigned_to: '',
+              urgency: 'medium',
+              notes: ''
+            });
+            setAttachmentFiles([]);
+            setShowCreateModal(true);
+          }}
            className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
          >
            <Plus size={20} />

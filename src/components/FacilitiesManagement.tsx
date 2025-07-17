@@ -56,6 +56,10 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
   const [selectedFacilityForQuote, setSelectedFacilityForQuote] = useState<any>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingFacility, setEditingFacility] = useState<Facility | null>(null);
+  const [selectedFacilityForDetail, setSelectedFacilityForDetail] = useState<string | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -117,6 +121,35 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
 
   const updateAttachmentLabel = (id: string, label: string) => {
     setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      type: 'other',
+      farm_id: '',
+      description: '',
+      status: 'working',
+      last_maintenance: '',
+      maintenance_interval_days: 365
+    });
+    setAttachmentFiles([]);
+    setShowCreateModal(false);
+  };
+
+  const resetEditForm = () => {
+    setFormData({
+      name: '',
+      type: 'other',
+      farm_id: '',
+      description: '',
+      status: 'working',
+      last_maintenance: '',
+      maintenance_interval_days: 365
+    });
+    setAttachmentFiles([]);
+    setEditingFacility(null);
+    setShowEditModal(false);
   };
 
   const uploadAttachments = async (facilityId: string) => {
