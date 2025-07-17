@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle } from 'lucide-react';
+import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Farm {
@@ -56,6 +56,7 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [activeTab, setActiveTab] = useState('reports');
   const [reports, setReports] = useState<Report[]>([]);
+  const [facilities, setFacilities] = useState<any[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -126,6 +127,16 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
         .select('*')
         .eq('farm_id', farmId)
         .order('created_at', { ascending: false });
+
+      // Fetch facilities
+      const { data: facilitiesData, error: facilitiesError } = await supabase
+        .from('facilities')
+        .select('*')
+        .eq('farm_id', farmId)
+        .order('created_at', { ascending: false });
+
+      if (facilitiesError) throw facilitiesError;
+      setFacilities(facilitiesData || []);
 
       // Fetch quotes
       const { data: quotesData } = await supabase
@@ -221,6 +232,31 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
   const activeProjects = projects.filter(p => ['open', 'defined', 'in_progress'].includes(p.status));
   const totalProjectValue = projects.reduce((sum, project) => sum + getProjectValue(project.id), 0);
 
+  // Count facilities by type
+  const getFacilitiesByType = () => {
+    const typeCount: Record<string, number> = {};
+    facilities.forEach(facility => {
+      if (!typeCount[facility.type]) {
+        typeCount[facility.type] = 0;
+      }
+      typeCount[facility.type]++;
+    });
+    return typeCount;
+  };
+
+  const getFacilityTypeText = (type: string) => {
+    switch (type) {
+      case 'electrical': return 'Elettrici';
+      case 'plumbing': return 'Idraulici';
+      case 'ventilation': return 'Ventilazione';
+      case 'heating': return 'Riscaldamento';
+      case 'cooling': return 'Raffreddamento';
+      case 'lighting': return 'Illuminazione';
+      case 'security': return 'Sicurezza';
+      default: return 'Altri';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,6 +320,45 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
                   <span>{farm.address}</span>
                 </div>
               )}
+
+              {/* Fetch and display facilities count */}
+              <div className="mt-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const { data, error } = await supabase
+                        .from('facilities')
+                        .select('id, type')
+                        .eq('farm_id', farm.id);
+                      
+                      if (error) throw error;
+                      
+                      const typeCount: Record<string, number> = {};
+                      data.forEach(facility => {
+                        if (!typeCount[facility.type]) {
+                          typeCount[facility.type] = 0;
+                        }
+                        typeCount[facility.type]++;
+                      });
+                      
+                      if (Object.keys(typeCount).length === 0) {
+                        alert('Nessun impianto registrato per questo allevamento');
+                      } else {
+                        const message = Object.entries(typeCount)
+                          .map(([type, count]) => `${getFacilityTypeText(type)}: ${count}`)
+                          .join('\n');
+                        alert(`Impianti:\n${message}`);
+                      }
+                    } catch (error) {
+                      console.error('Errore nel caricamento impianti:', error);
+                    }
+                  }}
+                  className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                >
+                  <Wrench size={12} />
+                  <span>Visualizza impianti</span>
+                </button>
+              </div>
               
               <div className="text-xs text-gray-500">
                 Creato il {new Date(farm.created_at).toLocaleDateString('it-IT')}
@@ -406,6 +481,19 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
             <Package className="w-8 h-8 text-blue-600" />
           </div>
         </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Impianti</p>
+              <p className="text-2xl font-bold text-purple-600">{facilities.length}</p>
+              <p className="text-xs text-gray-500">
+                {facilities.filter(f => f.status === 'not_working').length} non funzionanti
+              </p>
+            </div>
+            <Wrench className="w-8 h-8 text-purple-600" />
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
@@ -473,6 +561,25 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
                 {equipment.length > 0 && (
                   <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
                     {equipment.length}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('facilities')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'facilities'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Wrench className="w-4 h-4" />
+                Impianti
+                {facilities.length > 0 && (
+                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                    {facilities.length}
                   </span>
                 )}
               </div>
@@ -589,6 +696,55 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
                             </div>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Facilities Tab */}
+          {activeTab === 'facilities' && (
+            <div className="space-y-4">
+              {facilities.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Wrench className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nessun impianto registrato per questo allevamento</p>
+                </div>
+              ) : (
+                facilities.map((facility) => (
+                  <div key={facility.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{facility.name}</h3>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            facility.status === 'working' ? 'bg-green-100 text-green-800' : 
+                            facility.status === 'not_working' ? 'bg-red-100 text-red-800' :
+                            facility.status === 'maintenance_required' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {facility.status === 'working' ? 'Funzionante' : 
+                             facility.status === 'not_working' ? 'Non funzionante' :
+                             facility.status === 'maintenance_required' ? 'Richiede manutenzione' : 'In manutenzione'}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            facility.type === 'electrical' ? 'bg-yellow-100 text-yellow-800' :
+                            facility.type === 'plumbing' ? 'bg-blue-100 text-blue-800' :
+                            facility.type === 'ventilation' ? 'bg-green-100 text-green-800' :
+                            facility.type === 'heating' ? 'bg-red-100 text-red-800' :
+                            facility.type === 'cooling' ? 'bg-indigo-100 text-indigo-800' :
+                            facility.type === 'lighting' ? 'bg-amber-100 text-amber-800' :
+                            facility.type === 'security' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {getFacilityTypeText(facility.type)}
+                          </span>
+                        </div>
+                        {facility.next_maintenance_due && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            Prossima manutenzione: {new Date(facility.next_maintenance_due).toLocaleDateString('it-IT')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

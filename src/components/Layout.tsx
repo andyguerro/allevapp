@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, User, LogOut, ShoppingCart } from 'lucide-react';
+import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, LogOut, ShoppingCart } from 'lucide-react';
 
 interface MenuItem {
   id: string;
