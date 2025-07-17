@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip } from 'lucide-react';
+import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip, Trash2, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
 import FacilityDetailModal from './FacilityDetailModal';
 import SearchFilters, { Option } from './SearchFilters';
+import QuoteRequestModal from './QuoteRequestModal';
 
 interface Facility {
   id: string;
@@ -45,6 +46,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
   const [selectedFacilityId, setSelectedFacilityId] = useState<string | null>(null);
   const [selectedFacilityName, setSelectedFacilityName] = useState<string>('');
   const [selectedFacilityForDetail, setSelectedFacilityForDetail] = useState<string | null>(null);
+  const [selectedFacilityForQuote, setSelectedFacilityForQuote] = useState<any>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -254,6 +256,25 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
     });
     setEditingFacility(null);
     setShowEditModal(false);
+  };
+
+  const handleDelete = async (facilityId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo impianto? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('facilities')
+        .delete()
+        .eq('id', facilityId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione impianto:', error);
+      alert('Errore nell\'eliminazione dell\'impianto');
+    }
   };
 
   const updateMaintenanceDate = async (facilityId: string, newDate: string) => {
@@ -543,12 +564,28 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                     <Paperclip size={16} />
                   </button>
                 </button>
+                {currentUser && (
+                  <button
+                    onClick={() => setSelectedFacilityForQuote(facility)}
+                    className="p-2 text-gray-400 hover:text-brand-coral transition-colors"
+                    title="Richiedi preventivo"
+                  >
+                    <Mail size={16} />
+                  </button>
+                )}
                 <button 
                   onClick={() => handleEdit(facility)}
                   className="p-2 text-gray-400 hover:text-green-600 transition-colors"
                   title="Modifica impianto"
                 >
                   <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(facility.id)}
+                  className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Elimina impianto"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
               <div className="text-xs text-gray-500">
@@ -886,6 +923,19 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
             setSelectedFacilityForDetail(null);
             handleEdit(facility);
           }}
+        />
+      )}
+
+      {/* Quote Request Modal */}
+      {selectedFacilityForQuote && currentUser && (
+        <QuoteRequestModal
+          entityType="facility"
+          entityId={selectedFacilityForQuote.id}
+          entityName={selectedFacilityForQuote.name}
+          entityDescription={selectedFacilityForQuote.description}
+          farmName={selectedFacilityForQuote.farm_name}
+          currentUser={currentUser}
+          onClose={() => setSelectedFacilityForQuote(null)}
         />
       )}
 

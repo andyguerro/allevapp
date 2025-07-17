@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail } from 'lucide-react';
+import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReportDetailModal from './ReportDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
@@ -349,6 +349,25 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
     setShowEditModal(false);
   };
 
+  const handleDelete = async (reportId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa segnalazione? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', reportId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione segnalazione:', error);
+      alert('Errore nell\'eliminazione della segnalazione');
+    }
+  };
+
   const updateReportStatus = async (reportId: string, newStatus: string) => {
     try {
       const { error } = await supabase
@@ -606,6 +625,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
                   title="Modifica segnalazione"
                 >
                   <Edit size={18} />
+                </button>
+                <button
+                  onClick={() => handleDelete(report.id)}
+                  className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+                  title="Elimina segnalazione"
+                >
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>

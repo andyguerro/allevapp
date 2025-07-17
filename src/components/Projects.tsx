@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FolderOpen, Edit, Eye, Calendar, Building, FileText, Users, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, FolderOpen, Edit, Eye, Calendar, Building, FileText, Users, CheckCircle, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import SearchFilters, { Option } from './SearchFilters';
 
@@ -272,6 +272,25 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
     setShowEditModal(false);
   };
 
+  const handleDelete = async (projectId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo progetto? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione progetto:', error);
+      alert('Errore nell\'eliminazione del progetto');
+    }
+  };
+
   const handleFilterChange = (filterId: string, selected: Option[]) => {
     setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
   };
@@ -457,6 +476,13 @@ const Projects: React.FC<ProjectsProps> = ({ initialFilters }) => {
                 </button>
                 <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
                   <Eye size={16} />
+                </button>
+                <button
+                  onClick={() => handleDelete(project.id)}
+                  className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+                  title="Elimina progetto"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>

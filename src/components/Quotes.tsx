@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit, ShoppingCart } from 'lucide-react';
+import { Plus, FileText, Mail, Calendar, Clock, CheckCircle, AlertCircle, Edit, ShoppingCart, Trash2, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import OrderConfirmationModal from './OrderConfirmationModal';
 import SearchFilters, { Option } from './SearchFilters';
@@ -305,6 +305,25 @@ const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
     setShowEditModal(false);
   };
 
+  const handleDelete = async (quoteId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo preventivo? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .delete()
+        .eq('id', quoteId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione preventivo:', error);
+      alert('Errore nell\'eliminazione del preventivo');
+    }
+  };
+
   const updateQuoteStatus = async (quoteId: string, newStatus: string) => {
     try {
       // If accepting a quote, show order confirmation modal instead
@@ -570,6 +589,9 @@ const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
                 <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
                   <Mail size={18} />
                 </button>
+                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
+                  <Eye size={18} />
+                </button>
                 <button 
                   onClick={() => handleEdit(quote)}
                   className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
@@ -577,8 +599,12 @@ const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
                 >
                   <Edit size={18} />
                 </button>
-                <button className="p-2 text-brand-gray hover:text-brand-blue transition-colors">
-                  <Calendar size={18} />
+                <button
+                  onClick={() => handleDelete(quote.id)}
+                  className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+                  title="Elimina preventivo"
+                >
+                  <Trash2 size={18} />
                 </button>
               </div>
               

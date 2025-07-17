@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye } from 'lucide-react';
 import AttachmentsManager from './AttachmentsManager';
 import EquipmentDetailModal from './EquipmentDetailModal';
+import QuoteRequestModal from './QuoteRequestModal';
 
 interface EquipmentProps {
   currentUser?: any;
@@ -40,6 +41,7 @@ export default function Equipment({ currentUser }: EquipmentProps) {
   const [dragOver, setDragOver] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
   const [selectedEquipmentForDetail, setSelectedEquipmentForDetail] = useState<string | null>(null);
+  const [selectedEquipmentForQuote, setSelectedEquipmentForQuote] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     model: '',
@@ -739,6 +741,16 @@ export default function Equipment({ currentUser }: EquipmentProps) {
                 >
                   <Paperclip size={16} />
                 </button>
+                {currentUser && (
+                  <button
+                    onClick={() => setSelectedEquipmentForQuote(item)}
+                    className="p-2 text-gray-600 hover:text-brand-coral hover:bg-gray-100 rounded-lg transition-colors relative"
+                    title="Richiedi preventivo"
+                  >
+                    <Mail size={16} />
+                    {/* Badge per preventivi attivi - da implementare */}
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(item.id)}
                   className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -769,6 +781,18 @@ export default function Equipment({ currentUser }: EquipmentProps) {
         />
       )}
 
+      {/* Quote Request Modal */}
+      {selectedEquipmentForQuote && currentUser && (
+        <QuoteRequestModal
+          entityType="equipment"
+          entityId={selectedEquipmentForQuote.id}
+          entityName={selectedEquipmentForQuote.name}
+          entityDescription={selectedEquipmentForQuote.description}
+          farmName={selectedEquipmentForQuote.farms?.name}
+          currentUser={currentUser}
+          onClose={() => setSelectedEquipmentForQuote(null)}
+        />
+      )}
       {selectedEquipmentForDetail && (
         <EquipmentDetailModal
           equipmentId={selectedEquipmentForDetail}
