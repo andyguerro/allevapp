@@ -136,7 +136,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
         query = query.in('farm_id', userFarms);
       }
 
-      const { data: quotesData, error: quotesError } = await query;
+      const { data: reportsData, error: quotesError } = await query;
 
       if (quotesError) throw quotesError;
 
