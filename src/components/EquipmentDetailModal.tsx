@@ -37,10 +37,16 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
   useEffect(() => {
     fetchEquipmentDetail();
   }, [equipmentId]);
-
+  
   useEffect(() => {
-    if (equipment?.farm_id && equipment?.name) {
-      fetchActiveQuotes();
+    // Only run this effect when equipment data is loaded
+    if (equipment) {
+      const fetchQuotes = async () => {
+        if (equipment.farm_id && equipment.name) {
+          await fetchActiveQuotes();
+        }
+      };
+      fetchQuotes();
     }
   }, [equipment]);
 
@@ -69,7 +75,8 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
   };
 
   const fetchActiveQuotes = async () => {
-    if (!equipment?.farm_id || !equipment?.name) {
+    // Double-check that we have the required data
+    if (!equipment || !equipment.farm_id || !equipment.name) {
       return;
     }
 

@@ -36,10 +36,16 @@ const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({ facilityId, o
   useEffect(() => {
     fetchFacilityDetail();
   }, [facilityId]);
-
+  
   useEffect(() => {
-    if (facility?.farm_id && facility?.name) {
-      fetchActiveQuotes();
+    // Only run this effect when facility data is loaded
+    if (facility) {
+      const fetchQuotes = async () => {
+        if (facility.farm_id && facility.name) {
+          await fetchActiveQuotes();
+        }
+      };
+      fetchQuotes();
     }
   }, [facility]);
 
@@ -68,7 +74,8 @@ const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({ facilityId, o
   };
 
   const fetchActiveQuotes = async () => {
-    if (!facility?.farm_id || !facility?.name) {
+    // Double-check that we have the required data
+    if (!facility || !facility.farm_id || !facility.name) {
       return;
     }
 

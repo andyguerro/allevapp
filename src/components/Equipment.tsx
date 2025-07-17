@@ -5,6 +5,12 @@ import AttachmentsManager from './AttachmentsManager';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
 
+interface AttachmentFile {
+  file: File;
+  label: string;
+  id: string;
+}
+
 interface EquipmentProps {
   currentUser?: any;
 }

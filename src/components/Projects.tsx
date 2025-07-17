@@ -3,6 +3,17 @@ import { Plus, FolderOpen, Edit, Eye, Calendar, Building, FileText, Users, Check
 import { supabase } from '../lib/supabase';
 import SearchFilters, { Option } from './SearchFilters';
 
+// Get current user from localStorage
+const currentUserStr = localStorage.getItem('allevapp_current_user');
+let currentUser = null;
+if (currentUserStr) {
+  try {
+    currentUser = JSON.parse(currentUserStr);
+  } catch (error) {
+    console.error('Error parsing current user:', error);
+  }
+}
+
 interface ProjectsProps {
   initialFilters?: {
     farmId?: string;
