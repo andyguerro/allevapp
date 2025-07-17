@@ -236,6 +236,7 @@ export interface Database {
           report_id: string | null;
           supplier_id: string;
           farm_id: string | null;
+          project_id: string | null;
           title: string;
           description: string;
           amount: number | null;
@@ -251,6 +252,7 @@ export interface Database {
           report_id?: string | null;
           supplier_id: string;
           farm_id?: string | null;
+          project_id?: string | null;
           title: string;
           description: string;
           amount?: number | null;
@@ -266,6 +268,7 @@ export interface Database {
           report_id?: string | null;
           supplier_id?: string;
           farm_id?: string | null;
+          project_id?: string | null;
           title?: string;
           description?: string;
           amount?: number | null;
