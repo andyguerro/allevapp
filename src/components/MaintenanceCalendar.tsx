@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertTriangle, CheckCircle, Package, Wrench, ChevronLeft, ChevronRight, Filter, FileText } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, CheckCircle, Package, Wrench, ChevronLeft, ChevronRight, Filter, FileText, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import CalendarIntegration from './CalendarIntegration';
 
 interface MaintenanceItem {
   id: string;
@@ -45,6 +46,8 @@ const MaintenanceCalendar: React.FC = () => {
   const [filterType, setFilterType] = useState<'all' | 'equipment' | 'facility' | 'quotes'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'due' | 'overdue'>('all');
   const [loading, setLoading] = useState(true);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedMaintenanceItem, setSelectedMaintenanceItem] = useState<MaintenanceItem | null>(null);
 
   useEffect(() => {
     fetchCalendarData();
@@ -154,6 +157,29 @@ const MaintenanceCalendar: React.FC = () => {
       console.error('Errore nell\'aggiornamento data manutenzione:', error);
       alert('Errore nell\'aggiornamento della data di manutenzione');
     }
+  };
+
+  const createMaintenanceEvent = (item: MaintenanceItem) => {
+    const eventTitle = `Manutenzione ${item.type === 'equipment' ? 'Attrezzatura' : 'Impianto'}: ${item.name}`;
+    const eventDescription = `
+      Manutenzione programmata per ${item.type === 'equipment' ? 'attrezzatura' : 'impianto'}: ${item.name}
+      
+      Allevamento: ${item.farm_name}
+      ${item.type === 'facility' ? `Tipo: ${getFacilityTypeText(item.facility_type)}` : ''}
+      ${item.description ? `Descrizione: ${item.description}` : ''}
+      ${item.last_maintenance ? `Ultima manutenzione: ${new Date(item.last_maintenance).toLocaleDateString('it-IT')}` : ''}
+      
+      Generato automaticamente da AllevApp
+    `;
+    const eventLocation = item.farm_name;
+    
+    setSelectedMaintenanceItem({
+      ...item,
+      eventTitle,
+      eventDescription,
+      eventLocation
+    } as any);
+    setShowCalendarModal(true);
   };
 
   const getCalendarDays = (): CalendarDay[] => {
@@ -317,7 +343,15 @@ const MaintenanceCalendar: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-brand-blue">Calendario Manutenzioni</h1>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <button
+            onClick={() => setShowCalendarModal(true)}
+            className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-3 sm:px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-1 sm:space-x-2 text-sm sm:text-base"
+          >
+            <Plus size={16} className="sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Nuovo Evento</span>
+            <span className="sm:hidden">Evento</span>
+          </button>
           <div className="flex items-center space-x-2">
             <Filter size={18} className="text-brand-gray" />
             <select
@@ -510,6 +544,13 @@ const MaintenanceCalendar: React.FC = () => {
                       >
                         Segna come Completata
                       </button>
+                      <button
+                        onClick={() => createMaintenanceEvent(item)}
+                        className="mt-1 w-full px-2 py-1 bg-brand-coral/10 text-brand-coral rounded text-xs hover:bg-brand-coral/20 transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Calendar size={12} />
+                        <span>Aggiungi a Calendario</span>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -555,6 +596,13 @@ const MaintenanceCalendar: React.FC = () => {
                         className="mt-2 w-full px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition-colors"
                       >
                         Segna come Completata
+                      </button>
+                      <button
+                        onClick={() => createMaintenanceEvent(item)}
+                        className="mt-1 w-full px-2 py-1 bg-brand-coral/10 text-brand-coral rounded text-xs hover:bg-brand-coral/20 transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Calendar size={12} />
+                        <span>Aggiungi a Calendario</span>
                       </button>
                     </div>
                   ))}
@@ -628,6 +676,19 @@ const MaintenanceCalendar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Calendar Integration Modal */}
+      {showCalendarModal && (
+        <CalendarIntegration
+          onClose={() => {
+            setShowCalendarModal(false);
+            setSelectedMaintenanceItem(null);
+          }}
+          defaultTitle={selectedMaintenanceItem?.eventTitle || ''}
+          defaultDescription={selectedMaintenanceItem?.eventDescription || ''}
+          defaultLocation={selectedMaintenanceItem?.eventLocation || ''}
+        />
+      )}
     </div>
   );
 };
