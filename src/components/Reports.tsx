@@ -675,7 +675,20 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
-           onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setFormData({
+              title: '',
+              description: '',
+              farm_id: '',
+              equipment_id: '',
+              supplier_id: '',
+              assigned_to: '',
+              urgency: 'medium',
+              notes: ''
+            });
+            setAttachmentFiles([]);
+            setShowCreateModal(true);
+          }}
            className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
          >
            <Plus size={20} />
@@ -1083,7 +1096,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                     Aggiungi allegati alla segnalazione
                   </h4>
                   <p className="text-gray-600 mb-3 text-sm">
-                    Trascina i file qui o clicca per selezionare
+                    <span className="hidden sm:inline">Trascina i file qui o </span>Tocca per selezionare
                   </p>
                   <p className="text-xs text-gray-500 mb-3">
                     Formati supportati: immagini, PDF, documenti • Max 10MB per file
@@ -1099,11 +1112,30 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                   />
                   <label
                     htmlFor="report-attachment-upload"
-                    className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2"
+                    className="bg-brand-blue text-white px-6 py-3 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
                   >
-                    <Plus size={16} />
+                    <span>📱</span>
                     <span>Seleziona File</span>
                   </label>
+                  
+                  {/* Mobile Camera Button */}
+                  <div className="mt-3 sm:hidden">
+                    <input
+                      type="file"
+                      onChange={(e) => handleFileSelect(e.target.files)}
+                      className="hidden"
+                      id="report-camera-upload"
+                      accept="image/*"
+                      capture="environment"
+                    />
+                    <label
+                      htmlFor="report-camera-upload"
+                      className="bg-brand-coral text-white px-6 py-3 rounded-lg hover:bg-brand-coral-light transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
+                    >
+                      <span>📷</span>
+                      <span>Scatta Foto</span>
+                    </label>
+                  </div>
                 </div>
 
                 {/* Selected Files List */}
@@ -1152,25 +1184,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                           </div>
                         </div>
                       ))}
-                    </div>
-                    
-                    {/* Mobile Camera Button */}
-                    <div className="mt-3 sm:hidden">
-                      <input
-                        type="file"
-                        onChange={(e) => handleFileSelect(e.target.files)}
-                        className="hidden"
-                        id="report-camera-upload"
-                        accept="image/*"
-                        capture="environment"
-                      />
-                      <label
-                        htmlFor="report-camera-upload"
-                        className="bg-brand-coral text-white px-6 py-3 rounded-lg hover:bg-brand-coral-light transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
-                      >
-                        <span>📷</span>
-                        <span>Scatta Foto</span>
-                      </label>
                     </div>
                   </div>
                 )}
