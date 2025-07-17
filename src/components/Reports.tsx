@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2, Paperclip } from 'lucide-react';
+import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2, Paperclip, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Building } from 'lucide-react';
 import ReportDetailModal from './ReportDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
 import SearchFilters, { Option } from './SearchFilters';
+import CalendarIntegration from './CalendarIntegration';
 
 interface Report {
   id: string;
@@ -79,6 +80,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
   const [selectedReportForDetail, setSelectedReportForDetail] = useState<string | null>(null);
   const [selectedReportForQuote, setSelectedReportForQuote] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedReportForCalendar, setSelectedReportForCalendar] = useState<Report | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -425,6 +428,30 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
     setSearchTerm('');
   };
 
+  const createReportEvent = (report: Report) => {
+    const eventTitle = `Segnalazione: ${report.title}`;
+    const eventDescription = `
+      Segnalazione da gestire: ${report.title}
+      
+      Descrizione: ${report.description}
+      Allevamento: ${report.farm_name}
+      ${report.equipment_name ? `Attrezzatura: ${report.equipment_name}` : ''}
+      Urgenza: ${getUrgencyText(report.urgency)}
+      Assegnato a: ${report.assigned_user_name}
+      
+      Generato automaticamente da AllevApp
+    `;
+    const eventLocation = report.farm_name;
+    
+    setSelectedReportForCalendar({
+      ...report,
+      eventTitle,
+      eventDescription,
+      eventLocation
+    } as any);
+    setShowCalendarModal(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
@@ -716,6 +743,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                       {report.active_quotes_count}
                     </span>
                   )}
+                </button>
+                <button
+                  onClick={() => createReportEvent(report)}
+                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+                  title="Aggiungi a calendario"
+                >
+                  <Calendar size={18} />
                 </button>
                 <button 
                   onClick={() => handleEdit(report)}
@@ -1094,6 +1128,19 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
             setSelectedReportForQuote(null);
             fetchData(); // Refresh to update active quotes count
           }}
+        />
+      )}
+
+      {/* Calendar Integration Modal */}
+      {showCalendarModal && (
+        <CalendarIntegration
+          onClose={() => {
+            setShowCalendarModal(false);
+            setSelectedReportForCalendar(null);
+          }}
+          defaultTitle={selectedReportForCalendar?.eventTitle || ''}
+          defaultDescription={selectedReportForCalendar?.eventDescription || ''}
+          defaultLocation={selectedReportForCalendar?.eventLocation || ''}
         />
       )}
 
