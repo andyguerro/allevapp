@@ -47,9 +47,10 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
         }
 
         try {
-          // Usa l'API di Nominatim (OpenStreetMap) per il geocoding
+          // Miglioramento: aggiungi più dettagli alla query per migliorare i risultati
+          const formattedAddress = `${farm.address}, Italia`;
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(farm.address)}&limit=1&countrycodes=it`
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formattedAddress)}&limit=1&countrycodes=it&addressdetails=1`
           );
           
           if (!response.ok) throw new Error('Errore nella richiesta di geocoding');
@@ -70,12 +71,16 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
             totalLat += coordinates.lat;
             totalLng += coordinates.lng;
             validCoordinatesCount++;
+            
+            // Aggiungi un log per debug
+            console.log(`Geocoded ${farm.name}: ${coordinates.lat}, ${coordinates.lng}`);
           } else {
+            console.log(`No geocoding results for ${farm.name}: ${farm.address}`);
             geocodedFarms.push(farm);
           }
           
           // Pausa per rispettare i limiti di rate dell'API
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1200));
         } catch (err) {
           console.error(`Errore nel geocoding per ${farm.name}:`, err);
           geocodedFarms.push(farm);
@@ -232,12 +237,19 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                   {/* Legenda */}
                   <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
                     <div className="flex items-center space-x-2 text-sm">
-                      <div className="w-3 h-3 bg-brand-red rounded-full border border-white"></div>
-                      <span className="text-brand-blue font-medium">Allevamenti</span>
-                    </div>
-                    <div className="text-xs text-brand-gray mt-1">
-                      {farmsWithCoordinates.length} di {farms.length} localizzati
-                    </div>
+                  {/* Tooltip migliorato */}
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div className="bg-brand-blue text-white px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap max-w-xs">
+                      <div className="font-bold">{farm.name}</div>
+                      {farm.address && <div className="text-xs mt-1 text-white/80">{farm.address}</div>}
+                  <div className="text-xs text-brand-gray mt-1 flex items-center justify-between">
+                    <span>{farmsWithCoordinates.length} di {farms.length} localizzati</span>
+                    {farmsWithCoordinates.length === 0 && farms.some(f => f.address) && (
+                      <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
+                      <p className="text-xs text-brand-coral mt-1">
+                        Indirizzo non localizzato. Prova a specificare città e provincia.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -351,7 +363,15 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                           key={farm.id}
                           className="p-3 rounded-lg bg-brand-gray/5 border border-brand-gray/10"
                         >
-                          <h5 className="font-medium text-brand-blue">{farm.name}</h5>
+                          <div className="flex items-center justify-between">
+                            <h5 className="font-medium text-brand-blue">{farm.name}</h5>
+                            <button
+                              onClick={() => alert('Per localizzare questo allevamento, aggiungi un indirizzo nelle impostazioni.')}
+                              className="text-xs text-brand-blue hover:text-brand-red transition-colors"
+                            >
+                              Aggiungi indirizzo
+                            </button>
+                          </div>
                           <p className="text-sm text-brand-gray mt-1">Indirizzo non specificato</p>
                         </div>
                       ))}
