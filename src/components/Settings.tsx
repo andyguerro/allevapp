@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building, Truck, Settings as SettingsIcon, Plus, Edit, Trash2, Map, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import FarmsMap from './FarmsMap';
+import MultiSelect, { Option } from './MultiSelect';
 
 interface Farm {
   id: string;
@@ -9,6 +10,7 @@ interface Farm {
   address?: string;
   company: string;
   created_at: string;
+  technicians?: { id: string; full_name: string }[];
 }
 
 interface Supplier {
@@ -49,7 +51,8 @@ const Settings: React.FC = () => {
   const [farmFormData, setFarmFormData] = useState({
     name: '',
     address: '',
-    company: 'Zoogamma Spa'
+    company: 'Zoogamma Spa',
+    technicians: [] as Option[]
   });
 
   const [supplierFormData, setSupplierFormData] = useState({
@@ -76,17 +79,45 @@ const Settings: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
+  
+  // Prepare technicians options for MultiSelect
+  const technicianOptions: Option[] = users
+    .filter(user => user.role === 'technician' || user.role === 'manager')
+    .map(user => ({
+      value: user.id,
+      label: user.full_name
+    }));
 
   const fetchData = async () => {
     try {
       // Fetch farms
       const { data: farmsData, error: farmsError } = await supabase
         .from('farms')
-        .select('*')
+        .select(`
+          *,
+          farm_technicians(
+            user_id,
+            users(id, full_name)
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (farmsError) throw farmsError;
-      setFarms(farmsData);
+      
+      // Transform data to include technicians
+      const transformedFarms = farmsData.map(farm => {
+        const technicians = farm.farm_technicians?.map(ft => ({
+          id: ft.users?.id || ft.user_id,
+          full_name: ft.users?.full_name || 'Unknown'
+        })) || [];
+        
+        return {
+          ...farm,
+          technicians
+        };
+      });
+      
+      setFarms(transformedFarms);
 
       // Fetch suppliers
       const { data: suppliersData, error: suppliersError } = await supabase
@@ -120,6 +151,9 @@ const Settings: React.FC = () => {
     try {
       console.log('Submitting farm data:', farmFormData);
       
+      // Get selected technician IDs
+      const technicianIds = farmFormData.technicians.map(t => t.value);
+      
       // Get a default user ID from the users table
       const { data: defaultUser, error: userError } = await supabase
         .from('users')
@@ -146,6 +180,29 @@ const Settings: React.FC = () => {
           .eq('id', editingFarm.id);
 
         if (error) throw error;
+        
+        // Delete existing technician relationships
+        const { error: deleteError } = await supabase
+          .from('farm_technicians')
+          .delete()
+          .eq('farm_id', editingFarm.id);
+          
+        if (deleteError) throw deleteError;
+        
+        // Add new technician relationships
+        if (technicianIds.length > 0) {
+          const technicianRelations = technicianIds.map(userId => ({
+            farm_id: editingFarm.id,
+            user_id: userId
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('farm_technicians')
+            .insert(technicianRelations);
+            
+          if (insertError) throw insertError;
+        }
+        
         console.log('Farm updated successfully');
       } else {
         // Create new farm
@@ -156,10 +213,27 @@ const Settings: React.FC = () => {
             address: farmFormData.address || null,
             company: farmFormData.company,
             created_by: defaultUser.id
-          });
+          })
+          .select();
 
         if (error) throw error;
-        console.log('Farm created successfully:', data);
+        
+        // Add technician relationships if any selected
+        if (technicianIds.length > 0 && data && data[0]) {
+          const newFarmId = data[0].id;
+          const technicianRelations = technicianIds.map(userId => ({
+            farm_id: newFarmId,
+            user_id: userId
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('farm_technicians')
+            .insert(technicianRelations);
+            
+          if (insertError) throw insertError;
+        }
+        
+        console.log('Farm created successfully with technicians');
       }
 
       await fetchData();
@@ -191,7 +265,11 @@ const Settings: React.FC = () => {
     setFarmFormData({
       name: farm.name,
       address: farm.address || '',
-      company: farm.company
+      company: farm.company,
+      technicians: farm.technicians?.map(tech => ({
+        value: tech.id,
+        label: tech.full_name
+      })) || []
     });
     setEditingFarm(farm);
     setShowFarmModal(true);
@@ -201,7 +279,8 @@ const Settings: React.FC = () => {
     setFarmFormData({
       name: '',
       address: '',
-      company: 'Zoogamma Spa'
+      company: 'Zoogamma Spa',
+      technicians: []
     });
     setEditingFarm(null);
     setShowFarmModal(false);
@@ -429,7 +508,19 @@ const Settings: React.FC = () => {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-brand-blue mb-2">{farm.name}</h3>
                 {farm.address && (
-                  <p className="text-brand-gray mb-4">{farm.address}</p>
+                  <p className="text-brand-gray mb-2">{farm.address}</p>
+                )}
+                {farm.technicians && farm.technicians.length > 0 && (
+                  <div className="mb-3">
+                    <span className="text-sm font-medium text-brand-blue">Tecnici:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {farm.technicians.map(tech => (
+                        <span key={tech.id} className="inline-block px-2 py-1 bg-brand-coral/10 text-brand-coral rounded-full text-xs">
+                          {tech.full_name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <div className="mb-4">
                   <span className="inline-block px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-sm font-medium">
@@ -865,6 +956,22 @@ const Settings: React.FC = () => {
                   onChange={(e) => setFarmFormData({ ...farmFormData, address: e.target.value })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Tecnici Assegnati
+                </label>
+                <MultiSelect
+                  options={technicianOptions}
+                  value={farmFormData.technicians}
+                  onChange={(selected) => setFarmFormData({ ...farmFormData, technicians: selected })}
+                  placeholder="Seleziona uno o più tecnici..."
+                  className="w-full"
+                />
+                <p className="text-xs text-brand-gray mt-1">
+                  Seleziona i tecnici che seguiranno questo allevamento
+                </p>
               </div>
 
               <div className="flex items-center justify-end space-x-3 pt-4">
