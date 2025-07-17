@@ -45,6 +45,26 @@ const App: React.FC = () => {
   const handleNavigate = (page: string, filters?: any) => {
     setCurrentPage(page);
     setPageFilters(filters || {});
+    
+    // Verifica se l'utente ha accesso alla pagina richiesta
+    if (currentUser) {
+      const userRole = currentUser.role;
+      
+      // Definisci le restrizioni di accesso alle pagine
+      const restrictedPages: Record<string, string[]> = {
+        'projects': ['admin', 'manager'],
+        'quotes': ['admin', 'manager'],
+        'orders': ['admin', 'manager'],
+        'maintenance': ['admin', 'manager'],
+        'settings': ['admin']
+      };
+      
+      // Se la pagina è ristretta e l'utente non ha il ruolo necessario, reindirizza alla dashboard
+      if (restrictedPages[page] && !restrictedPages[page].includes(userRole)) {
+        setCurrentPage('dashboard');
+        alert('Non hai i permessi necessari per accedere a questa pagina.');
+      }
+    }
   };
 
   const renderPage = () => {

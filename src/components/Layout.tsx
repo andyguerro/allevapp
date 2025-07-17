@@ -1,6 +1,13 @@
 import React from 'react';
 import { Home, ClipboardList, Package, FileText, Building, Calendar, Wrench, Settings, FolderOpen, Menu, X, User, LogOut, ShoppingCart } from 'lucide-react';
 
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  roles?: string[]; // Ruoli che possono vedere questo menu
+}
+
 interface LayoutProps {
   children: React.ReactNode;
   currentPage: string;
@@ -13,18 +20,23 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, curr
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [showUserMenu, setShowUserMenu] = React.useState(false);
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'farms', label: 'Allevamenti', icon: Building },
-    { id: 'reports', label: 'Segnalazioni', icon: ClipboardList },
-    { id: 'equipment', label: 'Attrezzature', icon: Package },
-    { id: 'facilities', label: 'Impianti', icon: Wrench },
-    { id: 'projects', label: 'Progetti', icon: FolderOpen },
-    { id: 'quotes', label: 'Preventivi', icon: FileText },
-    { id: 'orders', label: 'Ordini', icon: ShoppingCart },
-    { id: 'maintenance', label: 'Calendario', icon: Calendar },
-    { id: 'settings', label: 'Impostazioni', icon: Settings },
+  const menuItems: MenuItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home, roles: ['admin', 'manager', 'technician'] },
+    { id: 'farms', label: 'Allevamenti', icon: Building, roles: ['admin', 'manager', 'technician'] },
+    { id: 'reports', label: 'Segnalazioni', icon: ClipboardList, roles: ['admin', 'manager', 'technician'] },
+    { id: 'equipment', label: 'Attrezzature', icon: Package, roles: ['admin', 'manager', 'technician'] },
+    { id: 'facilities', label: 'Impianti', icon: Wrench, roles: ['admin', 'manager', 'technician'] },
+    { id: 'projects', label: 'Progetti', icon: FolderOpen, roles: ['admin', 'manager'] },
+    { id: 'quotes', label: 'Preventivi', icon: FileText, roles: ['admin', 'manager'] },
+    { id: 'orders', label: 'Ordini', icon: ShoppingCart, roles: ['admin', 'manager'] },
+    { id: 'maintenance', label: 'Calendario', icon: Calendar, roles: ['admin', 'manager'] },
+    { id: 'settings', label: 'Impostazioni', icon: Settings, roles: ['admin'] },
   ];
+
+  // Filtra i menu in base al ruolo dell'utente
+  const filteredMenuItems = currentUser 
+    ? menuItems.filter(item => !item.roles || item.roles.includes(currentUser.role))
+    : menuItems;
 
   const handleNavigate = (page: string) => {
     onNavigate(page);
@@ -151,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, curr
               </div>
             </div>
             <ul className="space-y-2">
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <li key={item.id}>
                   <button
                     onClick={() => handleNavigate(item.id)}
