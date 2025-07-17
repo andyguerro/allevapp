@@ -388,7 +388,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                   <br/>
                   <span className="text-xs">
                     <strong>Soluzione:</strong> Vai su Supabase Dashboard → Storage → attachments → Policies → 
-                    Crea policy con target role "public" e USING expression "true" per INSERT, SELECT, UPDATE, DELETE.
+                    Crea policy con target role "public\" e USING expression "true\" per INSERT, SELECT, UPDATE, DELETE.
                   </span>
                 </div>
               </div>
