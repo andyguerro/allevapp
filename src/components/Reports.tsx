@@ -136,9 +136,9 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
         query = query.in('farm_id', userFarms);
       }
 
-      const { data: reportsData, error: quotesError } = await query;
+      const { data: reportsData, error: reportsError } = await query;
 
-      if (quotesError) throw quotesError;
+      if (reportsError) throw reportsError;
 
       // Get active quotes count for each report
       const reportsWithQuotes = await Promise.all(

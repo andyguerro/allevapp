@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from './lib/supabase';
+import { supabase } from './lib/supabase';
 import UserSelection from './components/UserSelection';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
