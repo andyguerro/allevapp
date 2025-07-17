@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, FileText, Calendar, Building, Truck, DollarSign, Package, Eye, Download, Filter, Search } from 'lucide-react';
+import { ShoppingCart, FileText, Calendar, Building, Truck, DollarSign, Package, Eye, Download, Filter, Search, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface OrderConfirmation {
@@ -89,6 +89,25 @@ const Orders: React.FC = () => {
     } catch (error) {
       console.error('Errore nell\'aggiornamento stato ordine:', error);
       alert('Errore nell\'aggiornamento dello stato');
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo ordine? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('order_confirmations')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+      await fetchOrders();
+    } catch (error) {
+      console.error('Errore nell\'eliminazione ordine:', error);
+      alert('Errore nell\'eliminazione dell\'ordine');
     }
   };
 
@@ -549,9 +568,16 @@ const Orders: React.FC = () => {
                           <button
                             onClick={() => generateOrderDocument(order)}
                             className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
-                            title="Scarica documento"
+                            title="Scarica ordine"
                           >
                             <Download size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+                            title="Elimina ordine"
+                          >
+                            <Trash2 size={18} />
                           </button>
                         </div>
                       </div>
@@ -560,7 +586,7 @@ const Orders: React.FC = () => {
                       <div className="mt-4 flex items-center space-x-2">
                         <span className="text-xs font-medium text-brand-blue">Cambia stato:</span>
                         <div className="flex space-x-1">
-                          {order.status !== 'confirmed' && order.status !== 'cancelled' && (
+                          {order.status === 'pending' && (
                             <button
                               onClick={() => updateOrderStatus(order.id, 'confirmed')}
                               className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors"
@@ -576,7 +602,7 @@ const Orders: React.FC = () => {
                               Consegnato
                             </button>
                           )}
-                          {order.status !== 'cancelled' && order.status !== 'delivered' && (
+                          {(order.status === 'pending' || order.status === 'confirmed') && (
                             <button
                               onClick={() => updateOrderStatus(order.id, 'cancelled')}
                               className="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200 transition-colors"
