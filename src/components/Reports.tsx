@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2 } from 'lucide-react';
+import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReportDetailModal from './ReportDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
@@ -621,6 +621,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                   title="Visualizza dettagli"
                 >
                   <Eye size={18} />
+                </button>
+                <button
+                  onClick={() => setSelectedReportForDetail(report.id)}
+                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+                  title="Gestisci allegati"
+                >
+                  <Paperclip size={18} />
                 </button>
                 <button
                   onClick={() => setSelectedReportForQuote(report)}
