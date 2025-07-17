@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation, Loader, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { MapPin, Navigation, Loader, AlertCircle, Maximize2, Minimize2, ZoomIn, ZoomOut, Layers } from 'lucide-react';
 
 interface Farm {
   id: string;
@@ -25,6 +25,8 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 45.4642, lng: 9.1900 }); // Milano come centro default
   const [isExpanded, setIsExpanded] = useState(isFullscreen);
+  const [isSatelliteView, setIsSatelliteView] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(12); // Default zoom level
 
   useEffect(() => {
     geocodeFarms();
@@ -124,6 +126,18 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
     }
   };
 
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 1, 20)); // Max zoom level is 20
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 1, 1)); // Min zoom level is 1
+  };
+
+  const toggleMapType = () => {
+    setIsSatelliteView(!isSatelliteView);
+  };
+
   const farmsWithCoordinates = mapFarms.filter(farm => farm.coordinates);
   const farmsWithoutCoordinates = mapFarms.filter(farm => !farm.coordinates && farm.address);
 
@@ -149,10 +163,34 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
           <MapPin size={24} className="text-brand-red" />
           <h2 className="text-xl font-semibold text-brand-blue">Mappa Allevamenti</h2>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={toggleMapType}
+            className="p-2 text-brand-gray hover:text-brand-blue transition-colors bg-white/80 rounded-lg"
+            title={isSatelliteView ? "Vista Mappa" : "Vista Satellite"}
+          >
+            <Layers size={18} />
+          </button>
+          <div className="flex items-center bg-white/80 rounded-lg">
+            <button
+              onClick={handleZoomOut}
+              className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+              title="Zoom Out"
+            >
+              <ZoomOut size={18} />
+            </button>
+            <span className="text-xs text-brand-gray px-1">{zoomLevel}</span>
+            <button
+              onClick={handleZoomIn}
+              className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn size={18} />
+            </button>
+          </div>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
+            className="p-2 text-brand-gray hover:text-brand-blue transition-colors bg-white/80 rounded-lg"
             title={isExpanded ? "Riduci" : "Espandi"}
           >
             {isExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
@@ -160,7 +198,7 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
           {onClose && (
             <button
               onClick={onClose}
-              className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+              className="p-2 text-brand-gray hover:text-brand-red transition-colors bg-white/80 rounded-lg"
               title="Chiudi"
             >
               ×
@@ -184,23 +222,33 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
             <div className="flex-1 relative bg-gradient-to-br from-brand-blue/10 to-brand-coral/10">
               {/* Simulazione mappa con punti */}
               <div className="absolute inset-0 overflow-hidden">
-                <div 
-                  className="w-full h-full relative bg-gradient-to-br from-green-100 via-blue-50 to-green-200"
+                <div
+                  className={`w-full h-full relative ${
+                    isSatelliteView 
+                      ? 'bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900' 
+                      : 'bg-gradient-to-br from-green-100 via-blue-50 to-green-200'
+                  }`}
                   style={{
-                    backgroundImage: `
-                      radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
-                      radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                      radial-gradient(circle at 60% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)
-                    `
+                    backgroundImage: isSatelliteView 
+                      ? `url('https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')` 
+                      : `
+                        radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 60% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)
+                      `,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    transform: `scale(${zoomLevel / 10})`,
+                    transformOrigin: 'center'
                   }}
                 >
                   {/* Griglia per simulare una mappa */}
-                  <div className="absolute inset-0 opacity-20">
+                  <div className={`absolute inset-0 ${isSatelliteView ? 'opacity-10' : 'opacity-20'}`}>
                     {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={`h-${i}`} className="absolute w-full border-t border-gray-300" style={{ top: `${i * 10}%` }} />
+                      <div key={`h-${i}`} className={`absolute w-full border-t ${isSatelliteView ? 'border-white' : 'border-gray-300'}`} style={{ top: `${i * 10}%` }} />
                     ))}
                     {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={`v-${i}`} className="absolute h-full border-l border-gray-300" style={{ left: `${i * 10}%` }} />
+                      <div key={`v-${i}`} className={`absolute h-full border-l ${isSatelliteView ? 'border-white' : 'border-gray-300'}`} style={{ left: `${i * 10}%` }} />
                     ))}
                   </div>
 
@@ -235,7 +283,7 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                   })}
 
                   {/* Legenda */}
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-10">
                     <div className="flex items-center space-x-2 text-sm">
                       <div className="w-3 h-3 bg-brand-red rounded-full"></div>
                       <span className="text-brand-blue">Allevamento</span>
@@ -246,6 +294,28 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                         <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
                       )}
                     </div>
+                  </div>
+                  
+                  {/* Zoom Controls for Mobile */}
+                  <div className="absolute bottom-4 right-4 flex flex-col space-y-2 md:hidden z-10">
+                    <button
+                      onClick={handleZoomIn}
+                      className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-brand-blue hover:bg-brand-blue hover:text-white transition-colors"
+                    >
+                      <ZoomIn size={20} />
+                    </button>
+                    <button
+                      onClick={handleZoomOut}
+                      className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-brand-blue hover:bg-brand-blue hover:text-white transition-colors"
+                    >
+                      <ZoomOut size={20} />
+                    </button>
+                    <button
+                      onClick={toggleMapType}
+                      className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center text-brand-blue hover:bg-brand-blue hover:text-white transition-colors"
+                    >
+                      <Layers size={20} />
+                    </button>
                   </div>
                 </div>
               </div>
