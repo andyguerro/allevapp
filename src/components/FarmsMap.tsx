@@ -237,19 +237,15 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                   {/* Legenda */}
                   <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
                     <div className="flex items-center space-x-2 text-sm">
-                  {/* Tooltip migliorato */}
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
-                    <div className="bg-brand-blue text-white px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap max-w-xs">
-                      <div className="font-bold">{farm.name}</div>
-                      {farm.address && <div className="text-xs mt-1 text-white/80">{farm.address}</div>}
-                  <div className="text-xs text-brand-gray mt-1 flex items-center justify-between">
-                    <span>{farmsWithCoordinates.length} di {farms.length} localizzati</span>
-                    {farmsWithCoordinates.length === 0 && farms.some(f => f.address) && (
-                      <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
-                      <p className="text-xs text-brand-coral mt-1">
-                        Indirizzo non localizzato. Prova a specificare città e provincia.
-                      </p>
-                    )}
+                      <div className="w-3 h-3 bg-brand-red rounded-full"></div>
+                      <span className="text-brand-blue">Allevamento</span>
+                    </div>
+                    <div className="text-xs text-brand-gray mt-1 flex items-center justify-between">
+                      <span>{farmsWithCoordinates.length} di {farms.length} localizzati</span>
+                      {farmsWithCoordinates.length === 0 && farms.some(f => f.address) && (
+                        <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -337,6 +333,9 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                         >
                           <h5 className="font-medium text-brand-blue">{farm.name}</h5>
                           <p className="text-sm text-brand-gray mt-1">{farm.address}</p>
+                          <p className="text-xs text-brand-coral mt-1">
+                            Indirizzo non localizzato. Prova a specificare città e provincia.
+                          </p>
                           <button
                             onClick={() => openInGoogleMaps(farm)}
                             className="mt-2 text-xs text-brand-coral hover:text-brand-coral-light transition-colors flex items-center space-x-1"
