@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Truck, Settings as SettingsIcon, Plus, Edit, Trash2, Map, Users } from 'lucide-react';
+import { Building, Truck, Settings as SettingsIcon, Plus, Edit, Trash2, Map, Users, Mail, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import FarmsMap from './FarmsMap';
 import MultiSelect, { Option } from './MultiSelect';
+import Microsoft365SetupGuide from './Microsoft365SetupGuide';
 
 interface Farm {
   id: string;
@@ -46,6 +47,7 @@ const Settings: React.FC = () => {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [showMicrosoft365Guide, setShowMicrosoft365Guide] = useState(false);
 
   // Form data
   const [farmFormData, setFarmFormData] = useState({
@@ -690,6 +692,26 @@ const Settings: React.FC = () => {
       <div className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6">
         <h3 className="text-lg font-medium text-brand-blue mb-4">Report Giornaliero Email</h3>
         <div className="space-y-4">
+          {/* Microsoft 365 Setup Button */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium text-blue-800 mb-1">📧 Configurazione Microsoft 365</h4>
+                <p className="text-sm text-blue-700">
+                  Configura la tua casella postale Microsoft 365 per l'invio automatico di email
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMicrosoft365Guide(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              >
+                <Mail size={16} />
+                <span>Configura</span>
+                <ExternalLink size={14} />
+              </button>
+            </div>
+          </div>
+          
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium text-brand-blue">Email Riepilogativa Giornaliera</p>
@@ -1164,6 +1186,11 @@ const Settings: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Microsoft 365 Setup Guide */}
+      {showMicrosoft365Guide && (
+        <Microsoft365SetupGuide onClose={() => setShowMicrosoft365Guide(false)} />
       )}
 
       {/* Mappa integrata per la vista normale */}
