@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip, Trash2, Mail } from 'lucide-react';
+import { Plus, Wrench, Edit, Eye, AlertTriangle, CheckCircle, Clock, Calendar, Paperclip, Trash2, Mail, Upload, FileText, Image, Tag, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
 import FacilityDetailModal from './FacilityDetailModal';
 import SearchFilters, { Option } from './SearchFilters';
 import QuoteRequestModal from './QuoteRequestModal';
+
+interface AttachmentFile {
+  file: File;
+  label: string;
+  id: string;
+}
 
 interface Facility {
   id: string;
@@ -48,6 +54,8 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
   const [selectedFacilityName, setSelectedFacilityName] = useState<string>('');
   const [selectedFacilityForDetail, setSelectedFacilityForDetail] = useState<string | null>(null);
   const [selectedFacilityForQuote, setSelectedFacilityForQuote] = useState<any>(null);
+  const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -62,6 +70,139 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
     next_maintenance_due: '',
     maintenance_interval_days: 365
   });
+
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const newFiles: AttachmentFile[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Verifica dimensione file (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Il file "${file.name}" è troppo grande. Dimensione massima: 10MB`);
+        continue;
+      }
+      
+      newFiles.push({
+        file,
+        label: file.name.split('.')[0], // Nome file senza estensione come default
+        id: Math.random().toString(36).substring(2)
+      });
+    }
+    
+    setAttachmentFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const removeAttachmentFile = (id: string) => {
+    setAttachmentFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const updateAttachmentLabel = (id: string, label: string) => {
+    setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
+  };
+
+  const uploadAttachments = async (facilityId: string) => {
+    if (attachmentFiles.length === 0) return;
+
+    try {
+      for (const attachmentFile of attachmentFiles) {
+        try {
+          // Genera un nome file unico
+          const fileExt = attachmentFile.file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `facility/${facilityId}/${fileName}`;
+
+          // Try to upload file to Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('attachments')
+            .upload(filePath, attachmentFile.file);
+
+          if (uploadError) {
+            console.warn(`Upload error for ${attachmentFile.file.name}:`, uploadError);
+            continue; // Continua con gli altri file
+          }
+
+          // Get current user or default user
+          let userId = currentUser?.id;
+          
+          if (!userId) {
+            const { data: defaultUser, error: userError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('active', true)
+              .limit(1)
+              .single();
+
+            if (userError || !defaultUser) {
+              console.warn('No active user found for attachment metadata');
+              continue;
+            }
+            
+            userId = defaultUser.id;
+          }
+
+          // Salva i metadati nel database
+          const { error: dbError } = await supabase
+            .from('attachments')
+            .insert({
+              entity_type: 'facility',
+              entity_id: facilityId,
+              file_name: attachmentFile.file.name,
+              file_path: filePath,
+              custom_label: attachmentFile.label || attachmentFile.file.name,
+              file_size: attachmentFile.file.size,
+              mime_type: attachmentFile.file.type,
+              created_by: userId
+            });
+
+          if (dbError) {
+            console.warn(`Database error for ${attachmentFile.file.name}:`, dbError);
+          }
+        } catch (fileError) {
+          console.warn(`Error uploading ${attachmentFile.file.name}:`, fileError);
+        }
+      }
+    } catch (error) {
+      console.warn('Error uploading attachments:', error);
+      // Non bloccare la creazione dell'impianto per errori di upload
+    }
+  };
+
+  const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return <FileText size={16} className="text-gray-600" />;
+    
+    if (mimeType.startsWith('image/')) {
+      return <Image size={16} className="text-blue-600" />;
+    } else if (mimeType.includes('pdf') || mimeType.includes('document')) {
+      return <FileText size={16} className="text-red-600" />;
+    } else {
+      return <FileText size={16} className="text-gray-600" />;
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  };
 
   useEffect(() => {
     fetchData();
@@ -176,7 +317,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
     e.preventDefault();
     
     try {
-      const { error } = await supabase
+      const { data: newFacility, error } = await supabase
         .from('facilities')
         .insert({
           name: formData.name,
@@ -187,9 +328,16 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
           last_maintenance: formData.last_maintenance || null,
           next_maintenance_due: formData.next_maintenance_due || null,
           maintenance_interval_days: formData.maintenance_interval_days
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Upload attachments if any
+      if (attachmentFiles.length > 0) {
+        await uploadAttachments(newFacility.id);
+      }
 
       await fetchData();
       resetForm();
@@ -210,6 +358,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
       next_maintenance_due: '',
       maintenance_interval_days: 365
     });
+    setAttachmentFiles([]);
     setShowCreateModal(false);
   };
 
@@ -269,6 +418,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
       next_maintenance_due: '',
       maintenance_interval_days: 365
     });
+    setAttachmentFiles([]);
     setEditingFacility(null);
     setShowEditModal(false);
   };
@@ -743,6 +893,100 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                 />
               </div>
 
+              {/* Attachments Section */}
+              <div className="border-t border-brand-coral/20 pt-6">
+                <h3 className="text-lg font-semibold text-brand-blue mb-4">Allegati (opzionale)</h3>
+                
+                {/* Upload Area */}
+                <div
+                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 mb-4 ${
+                    dragOver
+                      ? 'border-brand-blue bg-brand-blue/5'
+                      : 'border-gray-300 hover:border-brand-blue'
+                  }`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <Upload size={32} className={`mx-auto mb-3 ${dragOver ? 'text-brand-blue' : 'text-gray-400'}`} />
+                  <h4 className="text-md font-medium text-gray-900 mb-2">
+                    Aggiungi allegati all'impianto
+                  </h4>
+                  <p className="text-gray-600 mb-3 text-sm">
+                    Trascina i file qui o clicca per selezionare
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Formati supportati: immagini, PDF, documenti • Max 10MB per file
+                  </p>
+                  
+                  <input
+                    type="file"
+                    onChange={(e) => handleFileSelect(e.target.files)}
+                    className="hidden"
+                    id="facility-attachment-upload"
+                    accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
+                    multiple
+                  />
+                  <label
+                    htmlFor="facility-attachment-upload"
+                    className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2"
+                  >
+                    <Plus size={16} />
+                    <span>Seleziona File</span>
+                  </label>
+                </div>
+
+                {/* Selected Files List */}
+                {attachmentFiles.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      File selezionati ({attachmentFiles.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {attachmentFiles.map((attachmentFile) => (
+                        <div
+                          key={attachmentFile.id}
+                          className="bg-gray-50 rounded-lg border border-gray-200 p-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3 flex-1">
+                              <div className="p-2 bg-white rounded-lg shadow-sm">
+                                {getFileIcon(attachmentFile.file.type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Tag size={12} className="text-brand-blue" />
+                                  <input
+                                    type="text"
+                                    value={attachmentFile.label}
+                                    onChange={(e) => updateAttachmentLabel(attachmentFile.id, e.target.value)}
+                                    className="text-sm font-medium text-gray-900 bg-transparent border-none outline-none flex-1"
+                                    placeholder="Etichetta file..."
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 truncate">
+                                  {attachmentFile.file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(attachmentFile.file.size)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => removeAttachmentFile(attachmentFile.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Rimuovi file"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end space-x-3 pt-4">
                 <button
                   type="button"
@@ -755,7 +999,12 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                   type="submit"
                   className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
                 >
-                  Crea Impianto
+                  <span>Crea Impianto</span>
+                  {attachmentFiles.length > 0 && (
+                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs ml-2">
+                      +{attachmentFiles.length} file
+                    </span>
+                  )}
                 </button>
               </div>
             </form>
