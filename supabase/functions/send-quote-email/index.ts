@@ -29,26 +29,89 @@ serve(async (req) => {
   try {
     const { to, supplierName, quoteTitle, quoteDescription, farmName, dueDate, contactInfo }: EmailRequest = await req.json()
 
+    // Check if all required environment variables are present
+    const tenantId = Deno.env.get('MICROSOFT_TENANT_ID')
+    const clientId = Deno.env.get('MICROSOFT_CLIENT_ID')
+    const clientSecret = Deno.env.get('MICROSOFT_CLIENT_SECRET')
+    const senderEmail = Deno.env.get('MICROSOFT_SENDER_EMAIL')
+
+    if (!tenantId || !clientId || !clientSecret || !senderEmail) {
+      console.error('Missing Microsoft 365 environment variables:', {
+        tenantId: !!tenantId,
+        clientId: !!clientId,
+        clientSecret: !!clientSecret,
+        senderEmail: !!senderEmail
+      })
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Microsoft 365 credentials not configured. Please set MICROSOFT_TENANT_ID, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, and MICROSOFT_SENDER_EMAIL environment variables.',
+          message: 'Configurazione email non completata'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
+    console.log('Attempting to get Microsoft Graph access token...')
+
     // Get Microsoft Graph access token
-    const tokenResponse = await fetch('https://login.microsoftonline.com/' + Deno.env.get('MICROSOFT_TENANT_ID') + '/oauth2/v2.0/token', {
+    const tokenResponse = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: Deno.env.get('MICROSOFT_CLIENT_ID') || '',
-        client_secret: Deno.env.get('MICROSOFT_CLIENT_SECRET') || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         scope: 'https://graph.microsoft.com/.default',
         grant_type: 'client_credentials',
       }),
     })
 
     if (!tokenResponse.ok) {
-      throw new Error('Failed to get access token')
+      const errorText = await tokenResponse.text()
+      console.error('Token request failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: errorText
+      })
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to authenticate with Microsoft 365: ${tokenResponse.status} ${tokenResponse.statusText}. Please verify your Microsoft 365 credentials.`,
+          message: 'Errore di autenticazione Microsoft 365'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
     }
 
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
+
+    if (!accessToken) {
+      console.error('No access token received:', tokenData)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No access token received from Microsoft 365',
+          message: 'Errore nell\'ottenimento del token di accesso'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
+    console.log('Access token obtained successfully')
 
     // Create email content
     const emailSubject = `Richiesta Preventivo - ${quoteTitle}`
@@ -115,8 +178,10 @@ serve(async (req) => {
       </html>
     `
 
+    console.log('Attempting to send email via Microsoft Graph...')
+
     // Send email via Microsoft Graph API
-    const emailResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${Deno.env.get('MICROSOFT_SENDER_EMAIL')}/sendMail`, {
+    const emailResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${senderEmail}/sendMail`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -139,7 +204,7 @@ serve(async (req) => {
           ],
           from: {
             emailAddress: {
-              address: Deno.env.get('MICROSOFT_SENDER_EMAIL'),
+              address: senderEmail,
               name: contactInfo.companyName,
             },
           },
@@ -157,8 +222,26 @@ serve(async (req) => {
 
     if (!emailResponse.ok) {
       const errorText = await emailResponse.text()
-      throw new Error(`Failed to send email: ${errorText}`)
+      console.error('Email send failed:', {
+        status: emailResponse.status,
+        statusText: emailResponse.statusText,
+        error: errorText
+      })
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to send email via Microsoft Graph: ${emailResponse.status} ${emailResponse.statusText}`,
+          message: 'Errore nell\'invio dell\'email tramite Microsoft Graph'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
     }
+
+    console.log('Email sent successfully')
 
     return new Response(
       JSON.stringify({ 
@@ -174,13 +257,13 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error sending email:', error)
+    console.error('Unexpected error sending email:', error)
     
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
-        message: 'Errore nell\'invio dell\'email'
+        message: 'Errore imprevisto nell\'invio dell\'email'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
