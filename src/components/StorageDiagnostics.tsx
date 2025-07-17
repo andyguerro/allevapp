@@ -216,21 +216,29 @@ const StorageDiagnostics: React.FC = () => {
                     <li>Vai su Storage → attachments → Policies</li>
                     <li>Clicca "New policy"</li>
                     <li>Seleziona "For full customization"</li>
-                    <li>Policy name: <code className="bg-yellow-100 px-1 rounded">Allow authenticated uploads</code></li>
-                    <li>Allowed operation: <strong>INSERT</strong></li>
-                    <li>Target roles: <code className="bg-yellow-100 px-1 rounded">authenticated</code></li>
+                    <li>Policy name: <code className="bg-yellow-100 px-1 rounded">Allow public uploads</code></li>
+                    <li>Allowed operation: <strong>INSERT</strong> (ripeti per SELECT, UPDATE, DELETE)</li>
+                    <li>Target roles: <code className="bg-yellow-100 px-1 rounded">public</code></li>
                     <li>USING expression: <code className="bg-yellow-100 px-1 rounded">true</code></li>
-                    <li>Ripeti per SELECT, UPDATE, DELETE</li>
+                    <li><strong>IMPORTANTE:</strong> Usa "public" non "authenticated"</li>
                   </ul>
                 </div>
 
                 <div>
-                  <strong>3. Policy di esempio complete:</strong>
+                  <strong>3. Policy corrette per il problema:</strong>
                   <div className="bg-yellow-100 p-2 rounded mt-2 font-mono text-xs">
-                    <div>INSERT: <code>true</code></div>
-                    <div>SELECT: <code>true</code></div>
-                    <div>UPDATE: <code>true</code></div>
-                    <div>DELETE: <code>true</code></div>
+                    <div>Target roles: <code>public</code> (NON authenticated)</div>
+                    <div>USING expression: <code>true</code></div>
+                    <div>Operazioni: INSERT, SELECT, UPDATE, DELETE</div>
+                  </div>
+                </div>
+                
+                <div>
+                  <strong>4. Alternativa rapida (temporanea):</strong>
+                  <div className="bg-red-100 p-2 rounded mt-2 text-xs">
+                    <div>Vai su Storage → attachments → Settings</div>
+                    <div>Disabilita "Enable RLS" temporaneamente</div>
+                    <div>⚠️ Ricorda di riabilitarlo dopo aver configurato le policy</div>
                   </div>
                 </div>
               </div>

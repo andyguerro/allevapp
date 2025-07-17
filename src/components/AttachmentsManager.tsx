@@ -125,8 +125,21 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
           
           if (uploadError.message?.includes('new row violates row-level security policy') || 
               uploadError.message?.includes('JWT expired') ||
-              uploadError.message?.includes('Invalid JWT')) {
-            alert('⚠️ POLICY DI SICUREZZA\n\nLe policy di sicurezza del bucket impediscono il caricamento.\n\nPer risolvere:\n\n1. Vai su Supabase Dashboard\n2. Storage → attachments → Policies\n3. Crea policy con target role "public" (non "authenticated")\n4. USING expression: true\n5. Oppure disabilita RLS temporaneamente\n\nIl problema è che non c\'è autenticazione attiva.');
+              uploadError.message?.includes('Invalid JWT') ||
+              uploadError.message?.includes('policies')) {
+            alert('⚠️ CONFIGURAZIONE STORAGE RICHIESTA\n\n' +
+                  'Le policy di sicurezza del bucket impediscono il caricamento.\n\n' +
+                  '🔧 SOLUZIONE RAPIDA:\n' +
+                  '1. Vai su Supabase Dashboard\n' +
+                  '2. Storage → attachments → Policies\n' +
+                  '3. Clicca "New Policy"\n' +
+                  '4. Seleziona "For full customization"\n' +
+                  '5. Policy name: "Allow public uploads"\n' +
+                  '6. Target roles: "public"\n' +
+                  '7. USING expression: true\n' +
+                  '8. Ripeti per INSERT, SELECT, UPDATE, DELETE\n\n' +
+                  '💡 ALTERNATIVA:\n' +
+                  'Disabilita temporaneamente RLS sul bucket "attachments"');
             return;
           }
           
@@ -134,7 +147,14 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         }
       } catch (storageError) {
         console.error('Storage error:', storageError);
-        alert('⚠️ ERRORE STORAGE\n\nProblema nel caricamento del file:\n\n' + storageError.message + '\n\nSoluzioni:\n1. Verifica policy bucket (usa "public" invece di "authenticated")\n2. Controlla dimensione file (max 10MB)\n3. Verifica formato file supportato\n4. Considera di disabilitare RLS temporaneamente');
+        alert('⚠️ ERRORE STORAGE\n\n' +
+              'Problema nel caricamento del file:\n\n' + storageError.message + '\n\n' +
+              '🔧 SOLUZIONI:\n' +
+              '1. Configura policy bucket per role "public"\n' +
+              '2. Verifica dimensione file (max 10MB)\n' +
+              '3. Controlla formato file supportato\n' +
+              '4. Disabilita RLS temporaneamente se necessario\n\n' +
+              '📞 Contatta l\'amministratore per la configurazione');
         return;
       }
 
@@ -364,9 +384,12 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
               <div className="flex items-start space-x-2">
                 <div className="text-yellow-600 mt-0.5">⚠️</div>
                 <div className="text-sm text-yellow-800">
-                  <strong>Nota:</strong> Se il caricamento non funziona, potrebbe essere necessario configurare il sistema di storage in Supabase.
+                  <strong>Configurazione Storage Richiesta:</strong> Se il caricamento non funziona, è necessario configurare le policy del bucket "attachments" in Supabase.
                   <br/>
-                  <span className="text-xs">Contatta l'amministratore per la configurazione del bucket "attachments".</span>
+                  <span className="text-xs">
+                    <strong>Soluzione:</strong> Vai su Supabase Dashboard → Storage → attachments → Policies → 
+                    Crea policy con target role "public" e USING expression "true" per INSERT, SELECT, UPDATE, DELETE.
+                  </span>
                 </div>
               </div>
             </div>
