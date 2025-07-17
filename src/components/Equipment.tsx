@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye, Mail } from 'lucide-react';
 import AttachmentsManager from './AttachmentsManager';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
