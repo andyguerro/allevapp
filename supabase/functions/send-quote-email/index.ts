@@ -225,14 +225,31 @@ serve(async (req) => {
       console.error('Email send failed:', {
         status: emailResponse.status,
         statusText: emailResponse.statusText,
-        error: errorText
+        error: errorText,
+        senderEmail: senderEmail,
+        recipient: to
       })
+      
+      let errorMessage = `Failed to send email via Microsoft Graph: ${emailResponse.status} ${emailResponse.statusText}`
+      let userMessage = 'Errore nell\'invio dell\'email tramite Microsoft Graph'
+      
+      if (emailResponse.status === 403) {
+        errorMessage = `403 Forbidden - Insufficient permissions. Please verify: 1) Azure AD app has Mail.Send permission, 2) Admin consent is granted, 3) Sender email (${senderEmail}) is valid in your Microsoft 365 tenant`
+        userMessage = 'Permessi insufficienti per l\'invio email. Verificare configurazione Azure AD'
+      } else if (emailResponse.status === 401) {
+        errorMessage = `401 Unauthorized - Authentication failed. Please verify your Microsoft 365 credentials`
+        userMessage = 'Errore di autenticazione Microsoft 365'
+      } else if (emailResponse.status === 400) {
+        errorMessage = `400 Bad Request - Invalid email format or content. Error: ${errorText}`
+        userMessage = 'Formato email non valido'
+      }
       
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Failed to send email via Microsoft Graph: ${emailResponse.status} ${emailResponse.statusText}`,
-          message: 'Errore nell\'invio dell\'email tramite Microsoft Graph'
+          error: errorMessage,
+          message: userMessage,
+          details: errorText
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
