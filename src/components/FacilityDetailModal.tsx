@@ -35,8 +35,13 @@ const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({ facilityId, o
 
   useEffect(() => {
     fetchFacilityDetail();
-    fetchActiveQuotes();
   }, [facilityId]);
+
+  useEffect(() => {
+    if (facility?.farm_id && facility?.name) {
+      fetchActiveQuotes();
+    }
+  }, [facility]);
 
   const fetchFacilityDetail = async () => {
     try {
@@ -63,6 +68,10 @@ const FacilityDetailModal: React.FC<FacilityDetailModalProps> = ({ facilityId, o
   };
 
   const fetchActiveQuotes = async () => {
+    if (!facility?.farm_id || !facility?.name) {
+      return;
+    }
+
     try {
       // Check for quotes related to this facility through farm association
       const { data, error } = await supabase

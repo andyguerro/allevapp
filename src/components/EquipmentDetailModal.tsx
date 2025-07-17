@@ -36,8 +36,13 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
 
   useEffect(() => {
     fetchEquipmentDetail();
-    fetchActiveQuotes();
   }, [equipmentId]);
+
+  useEffect(() => {
+    if (equipment?.farm_id && equipment?.name) {
+      fetchActiveQuotes();
+    }
+  }, [equipment]);
 
   const fetchEquipmentDetail = async () => {
     try {
@@ -64,6 +69,10 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
   };
 
   const fetchActiveQuotes = async () => {
+    if (!equipment?.farm_id || !equipment?.name) {
+      return;
+    }
+
     try {
       // Check for quotes related to this equipment through reports or direct farm association
       const { data, error } = await supabase
