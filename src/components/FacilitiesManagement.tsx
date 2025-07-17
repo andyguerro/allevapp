@@ -943,7 +943,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                       File selezionati ({attachmentFiles.length})
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {attachmentFiles.map((attachmentFile) => (
+                      <span className="hidden sm:inline">Trascina i file qui o </span>Tocca per selezionare
                         <div
                           key={attachmentFile.id}
                           className="bg-gray-50 rounded-lg border border-gray-200 p-3"
@@ -955,6 +955,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center space-x-2 mb-2">
+                      capture="environment"
                                   <Tag size={12} className="text-brand-blue" />
                                   <input
                                     type="text"
@@ -978,10 +979,29 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
                               title="Rimuovi file"
                             >
                               <X size={16} />
-                            </button>
+                      className="bg-brand-blue text-white px-6 py-3 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
                           </div>
                         </div>
-                      ))}
+                      <span>📱 Seleziona File</span>
+                    </div>
+                    
+                    {/* Mobile Camera Button */}
+                    <div className="mt-3 sm:hidden">
+                      <input
+                        type="file"
+                        onChange={(e) => handleFileSelect(e.target.files)}
+                        className="hidden"
+                        id="facility-camera-upload"
+                        accept="image/*"
+                        capture="environment"
+                      />
+                      <label
+                        htmlFor="facility-camera-upload"
+                        className="bg-brand-coral text-white px-6 py-3 rounded-lg hover:bg-brand-coral-light transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
+                      >
+                        <span>📷</span>
+                        <span>Scatta Foto</span>
+                      </label>
                     </div>
                   </div>
                 )}

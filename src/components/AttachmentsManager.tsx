@@ -352,7 +352,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
               Carica un nuovo allegato
             </h3>
             <p className="text-sm sm:text-base text-brand-gray mb-3 sm:mb-4">
-              Trascina i file qui o clicca per selezionare
+              <span className="hidden sm:inline">Trascina i file qui o </span>Tocca per selezionare
             </p>
             <p className="text-xs text-brand-gray mb-3 sm:mb-4">
               Formati supportati: immagini, PDF, documenti Word, Excel, file di testo<br/>
@@ -377,14 +377,35 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
               className="hidden"
               id="file-upload"
               accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
+              capture="environment"
+              multiple
             />
             <label
               htmlFor="file-upload"
-              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-sm sm:text-base"
+              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-base font-medium min-h-[48px] touch-manipulation"
             >
               <Plus size={18} className="sm:w-5 sm:h-5" />
-              <span>Seleziona File</span>
+              <span>📱 Seleziona File</span>
             </label>
+            
+            {/* Mobile Camera Button */}
+            <div className="mt-3 sm:hidden">
+              <input
+                type="file"
+                onChange={(e) => handleFileSelect(e.target.files)}
+                className="hidden"
+                id="camera-upload"
+                accept="image/*"
+                capture="environment"
+              />
+              <label
+                htmlFor="camera-upload"
+                className="bg-gradient-to-r from-brand-blue to-brand-blue-light text-white px-6 py-3 rounded-lg hover:from-brand-blue-dark hover:to-brand-blue transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-base font-medium min-h-[48px] touch-manipulation"
+              >
+                <span>📷</span>
+                <span>Scatta Foto</span>
+              </label>
+            </div>
           </div>
 
           {/* Attachments List */}
