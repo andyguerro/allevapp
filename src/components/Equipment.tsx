@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye, Mail } from 'lucide-react';
+import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload, File, Image, FileText, X, Tag, Package, Eye, Mail, Search } from 'lucide-react';
 import AttachmentsManager from './AttachmentsManager';
 import EquipmentDetailModal from './EquipmentDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
@@ -47,6 +47,7 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
   const [selectedAttachmentEquipment, setSelectedAttachmentEquipment] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedEquipmentForDetail, setSelectedEquipmentForDetail] = useState<string | null>(null);
   const [selectedEquipmentForQuote, setSelectedEquipmentForQuote] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -169,6 +170,14 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
   const updateAttachmentLabel = (id: string, label: string) => {
     setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
   };
+
+  const filteredEquipment = equipment.filter(item => 
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.farms.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const uploadAttachments = async (equipmentId: string) => {
     if (attachmentFiles.length === 0) return;
@@ -435,15 +444,27 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Attrezzature</h1>
-        <button
-          onClick={() => setShowForm(true)}
-          className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark flex items-center space-x-2"
-        >
-          <Plus size={20} />
-          <span>Nuova Attrezzatura</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-gray" size={18} />
+            <input
+              type="text"
+              placeholder="Cerca attrezzature..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-brand-blue"
+            />
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark flex items-center justify-center space-x-2 whitespace-nowrap"
+          >
+            <Plus size={20} />
+            <span>Nuova Attrezzatura</span>
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -683,7 +704,7 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {equipment.map((item) => (
+        {filteredEquipment.map((item) => (
           <div key={item.id} className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -785,11 +806,17 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
         ))}
       </div>
 
-      {equipment.length === 0 && (
+      {equipment.length === 0 ? (
         <div className="text-center py-12">
           <Wrench size={48} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nessuna attrezzatura trovata</h3>
           <p className="text-gray-600">Inizia aggiungendo la tua prima attrezzatura.</p>
+        </div>
+      ) : filteredEquipment.length === 0 && (
+        <div className="text-center py-12">
+          <Search size={48} className="mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nessun risultato</h3>
+          <p className="text-gray-600">Nessuna attrezzatura corrisponde ai criteri di ricerca.</p>
         </div>
       )}
 
