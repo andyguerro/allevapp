@@ -82,6 +82,23 @@ export interface Database {
           created_by?: string | null;
         };
       };
+      farm_technicians: {
+        Row: {
+          farm_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          farm_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          farm_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+      };
       barns: {
         Row: {
           id: string;
