@@ -90,10 +90,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
   const [selectedReportForCalendar, setSelectedReportForCalendar] = useState<Report | null>(null);
   const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingReport, setEditingReport] = useState<Report | null>(null);
-  const [selectedReportForDetail, setSelectedReportForDetail] = useState<string | null>(null);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -506,106 +502,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
 
       if (error) throw error;
 
-      await fetchReports();
-      resetEditForm();
-    } catch (error) {
-      console.error('Errore nell\'aggiornamento segnalazione:', error);
-      alert('Errore nell\'aggiornamento della segnalazione');
-    }
-  };
-
-  const handleDelete = async (reportId: string) => {
-    if (!confirm('Sei sicuro di voler eliminare questa segnalazione? Questa azione non può essere annullata.')) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .delete()
-        .eq('id', reportId);
-
-      if (error) throw error;
-      await fetchReports();
-    } catch (error) {
-      console.error('Errore nell\'eliminazione segnalazione:', error);
-      alert('Errore nell\'eliminazione della segnalazione');
-    }
-  };
-
-  const handleEdit = (report: Report) => {
-    setFormData({
-      title: report.title,
-      description: report.description,
-      farm_id: report.farm_id,
-      equipment_id: report.equipment_id || '',
-      supplier_id: report.supplier_id || '',
-      assigned_to: report.assigned_to,
-      urgency: report.urgency,
-      notes: report.notes || ''
-    });
-    setEditingReport(report);
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!editingReport) return;
-    
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .update({
-          title: formData.title,
-          description: formData.description,
-          farm_id: formData.farm_id,
-          equipment_id: formData.equipment_id || null,
-          supplier_id: formData.supplier_id || null,
-          assigned_to: formData.assigned_to,
-          urgency: formData.urgency,
-          notes: formData.notes || null
-        })
-        .eq('id', editingReport.id);
-
-      if (error) throw error;
-
       await fetchData();
       resetEditForm();
     } catch (error) {
       console.error('Errore nell\'aggiornamento segnalazione:', error);
       alert('Errore nell\'aggiornamento della segnalazione');
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      farm_id: '',
-      equipment_id: '',
-      supplier_id: '',
-      assigned_to: '',
-      urgency: 'medium',
-      notes: ''
-    });
-    setAttachmentFiles([]);
-    setShowCreateModal(false);
-  };
-
-  const resetEditForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      farm_id: '',
-      equipment_id: '',
-      supplier_id: '',
-      assigned_to: '',
-      urgency: 'medium',
-      notes: ''
-    });
-    setEditingReport(null);
-    setShowEditModal(false);
   };
 
   const handleDelete = async (reportId: string) => {
@@ -773,20 +675,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
-          onClick={() => {
-            setFormData({
-              title: '',
-              description: '',
-              farm_id: '',
-              equipment_id: '',
-              supplier_id: '',
-              assigned_to: '',
-              urgency: 'medium',
-              notes: ''
-            });
-            setAttachmentFiles([]);
-            setShowCreateModal(true);
-          }}
+           onClick={() => setShowCreateModal(true)}
            className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
          >
            <Plus size={20} />
@@ -1224,7 +1113,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                       File selezionati ({attachmentFiles.length})
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <span className="hidden sm:inline">Trascina i file qui o </span>Tocca per selezionare
+                      {attachmentFiles.map((attachmentFile) => (
                         <div
                           key={attachmentFile.id}
                           className="bg-gray-50 rounded-lg border border-gray-200 p-3"
@@ -1236,7 +1125,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center space-x-2 mb-2">
-                      capture="environment"
                                   <Tag size={12} className="text-brand-blue" />
                                   <input
                                     type="text"
@@ -1260,10 +1148,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                               title="Rimuovi file"
                             >
                               <X size={16} />
-                      className="bg-brand-blue text-white px-6 py-3 rounded-lg hover:bg-brand-blue-dark transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 font-medium min-h-[48px] touch-manipulation"
+                            </button>
                           </div>
                         </div>
-                      <span>📱 Seleziona File</span>
+                      ))}
                     </div>
                     
                     {/* Mobile Camera Button */}
