@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, Loader, AlertCircle, Maximize2, Minimize2, ZoomIn, ZoomOut, Layers } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
 
 interface Farm {
   id: string;
@@ -22,15 +23,126 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
   const [mapFarms, setMapFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 45.4642, lng: 9.1900 }); // Milano come centro default
   const [isExpanded, setIsExpanded] = useState(isFullscreen);
   const [isSatelliteView, setIsSatelliteView] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(12); // Default zoom level
+  const mapRef = React.useRef<HTMLDivElement>(null);
+  const leafletMapRef = React.useRef<any>(null);
 
   useEffect(() => {
     geocodeFarms();
   }, [farms]);
+
+  useEffect(() => {
+    // Initialize map after component mounts
+    if (!mapLoaded && !loading && mapRef.current) {
+      initializeMap();
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+      }
+    };
+  }, [loading, mapLoaded, mapFarms]);
+
+  useEffect(() => {
+    // Update map when zoom level or map type changes
+    if (leafletMapRef.current) {
+      leafletMapRef.current.setZoom(zoomLevel);
+      
+      // Change tile layer based on view type
+      const layers = leafletMapRef.current._layers;
+      for (const id in layers) {
+        const layer = layers[id];
+        if (layer.options && layer.options.attribution) {
+          leafletMapRef.current.removeLayer(layer);
+        }
+      }
+      
+      if (isSatelliteView) {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        }).addTo(leafletMapRef.current);
+      } else {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(leafletMapRef.current);
+      }
+    }
+  }, [zoomLevel, isSatelliteView]);
+
+  const initializeMap = () => {
+    // Dynamically import Leaflet
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+    script.crossOrigin = '';
+    
+    script.onload = () => {
+      // Create global L variable for TypeScript
+      const L = (window as any).L;
+      
+      if (!mapRef.current || !L) return;
+      
+      // Initialize map
+      const map = L.map(mapRef.current).setView([mapCenter.lat, mapCenter.lng], zoomLevel);
+      
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      
+      // Add markers for farms with coordinates
+      farmsWithCoordinates.forEach(farm => {
+        if (farm.coordinates) {
+          const marker = L.marker([farm.coordinates.lat, farm.coordinates.lng])
+            .addTo(map)
+            .bindPopup(`
+              <div>
+                <h3 class="font-bold">${farm.name}</h3>
+                ${farm.address ? `<p>${farm.address}</p>` : ''}
+                <div class="flex mt-2">
+                  <button class="bg-blue-500 text-white px-2 py-1 rounded text-xs mr-1" 
+                    onclick="window.open('https://www.google.com/maps?q=${farm.coordinates.lat},${farm.coordinates.lng}', '_blank')">
+                    Visualizza
+                  </button>
+                  <button class="bg-red-500 text-white px-2 py-1 rounded text-xs"
+                    onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${farm.coordinates.lat},${farm.coordinates.lng}', '_blank')">
+                    Indicazioni
+                  </button>
+                </div>
+              </div>
+            `);
+            
+          // If this is the selected farm, open its popup
+          if (selectedFarm && selectedFarm.id === farm.id) {
+            marker.openPopup();
+          }
+        }
+      });
+      
+      // Store map reference
+      leafletMapRef.current = map;
+      setMapLoaded(true);
+    };
+    
+    document.head.appendChild(script);
+    
+    // Add Leaflet CSS
+    if (!document.querySelector('link[href*="leaflet.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+      link.crossOrigin = '';
+      document.head.appendChild(link);
+    }
+  };
 
   const geocodeFarms = async () => {
     setLoading(true);
@@ -127,15 +239,22 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 1, 20)); // Max zoom level is 20
+    setZoomLevel(prev => Math.min(prev + 1, 18)); // Max zoom level is 18
+    if (leafletMapRef.current) {
+      leafletMapRef.current.setZoom(Math.min(zoomLevel + 1, 18));
+    }
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 1, 1)); // Min zoom level is 1
+    setZoomLevel(prev => Math.max(prev - 1, 3)); // Min zoom level is 3
+    if (leafletMapRef.current) {
+      leafletMapRef.current.setZoom(Math.max(zoomLevel - 1, 3));
+    }
   };
 
   const toggleMapType = () => {
     setIsSatelliteView(!isSatelliteView);
+    // Map layer is updated in the useEffect
   };
 
   const farmsWithCoordinates = mapFarms.filter(farm => farm.coordinates);
@@ -209,7 +328,7 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
 
       <div className={`${isExpanded ? 'h-[calc(100vh-200px)]' : 'h-96'} overflow-hidden`}>
         {error ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center">
               <AlertCircle className="mx-auto mb-4 text-brand-red" size={48} />
               <h3 className="text-lg font-medium text-brand-red mb-2">Errore</h3>
@@ -218,84 +337,34 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
           </div>
         ) : (
           <div className="flex h-full">
-            {/* Mappa Interattiva */}
-            <div className="flex-1 relative bg-gradient-to-br from-brand-blue/10 to-brand-coral/10">
-              {/* Simulazione mappa con punti */}
-              <div className="absolute inset-0 overflow-hidden">
-                <div
-                  className={`w-full h-full relative ${
-                    isSatelliteView 
-                      ? 'bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900' 
-                      : 'bg-gradient-to-br from-green-100 via-blue-50 to-green-200'
-                  }`}
-                  style={{
-                    backgroundImage: isSatelliteView 
-                      ? `url('https://images.pexels.com/photos/417173/pexels-photo-417173.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')` 
-                      : `
-                        radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 60% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%)
-                      `,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    transform: `scale(${zoomLevel / 10})`,
-                    transformOrigin: 'center'
-                  }}
-                >
-                  {/* Griglia per simulare una mappa */}
-                  <div className={`absolute inset-0 ${isSatelliteView ? 'opacity-10' : 'opacity-20'}`}>
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={`h-${i}`} className={`absolute w-full border-t ${isSatelliteView ? 'border-white' : 'border-gray-300'}`} style={{ top: `${i * 10}%` }} />
-                    ))}
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={`v-${i}`} className={`absolute h-full border-l ${isSatelliteView ? 'border-white' : 'border-gray-300'}`} style={{ left: `${i * 10}%` }} />
-                    ))}
-                  </div>
-
-                  {/* Punti degli allevamenti */}
-                  {farmsWithCoordinates.map((farm, index) => {
-                    // Posiziona i punti in modo distribuito sulla mappa
-                    const x = 20 + (index % 3) * 25 + Math.random() * 10;
-                    const y = 20 + Math.floor(index / 3) * 20 + Math.random() * 10;
-                    
-                    return (
-                      <div
-                        key={farm.id}
-                        className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
-                        style={{ left: `${x}%`, top: `${y}%` }}
-                        onClick={() => setSelectedFarm(selectedFarm?.id === farm.id ? null : farm)}
-                      >
-                        <div className="relative">
-                          <div className="w-6 h-6 bg-brand-red rounded-full border-2 border-white shadow-lg group-hover:scale-110 transition-transform duration-200 flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                          </div>
-                          
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                            <div className="bg-brand-blue text-white px-3 py-2 rounded-lg shadow-lg text-sm whitespace-nowrap">
-                              {farm.name}
-                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-brand-blue"></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Legenda */}
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-10">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <div className="w-3 h-3 bg-brand-red rounded-full"></div>
-                      <span className="text-brand-blue">Allevamento</span>
-                    </div>
-                    <div className="text-xs text-brand-gray mt-1 flex items-center justify-between">
-                      <span>{farmsWithCoordinates.length} di {farms.length} localizzati</span>
-                      {farmsWithCoordinates.length === 0 && farms.some(f => f.address) && (
-                        <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
-                      )}
-                    </div>
-                  </div>
-                  
+            {/* Real Map using Leaflet */}
+            <div className="flex-1 relative">
+              <div 
+                ref={mapRef} 
+                className="w-full h-full" 
+                style={{ zIndex: 1 }}
+              ></div>
+              
+              {!mapLoaded && !error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                  <Loader className="animate-spin text-brand-blue" size={48} />
+                </div>
+              )}
+              
+              {/* Legenda */}
+              <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-10">
+                <div className="flex items-center space-x-2 text-sm">
+                  <div className="w-3 h-3 bg-brand-red rounded-full"></div>
+                  <span className="text-brand-blue">Allevamento</span>
+                </div>
+                <div className="text-xs text-brand-gray mt-1 flex items-center justify-between">
+                  <span>{farmsWithCoordinates.length} di {farms.length} localizzati</span>
+                  {farmsWithCoordinates.length === 0 && farms.some(f => f.address) && (
+                    <span className="text-xs text-brand-red ml-2">Ricarica per riprovare</span>
+                  )}
+                </div>
+              </div>
+              
                   {/* Zoom Controls for Mobile */}
                   <div className="absolute bottom-4 right-4 flex flex-col space-y-2 md:hidden z-10">
                     <button
@@ -317,8 +386,6 @@ const FarmsMap: React.FC<FarmsMapProps> = ({ farms, onClose, isFullscreen = fals
                       <Layers size={20} />
                     </button>
                   </div>
-                </div>
-              </div>
             </div>
 
             {/* Pannello laterale */}
