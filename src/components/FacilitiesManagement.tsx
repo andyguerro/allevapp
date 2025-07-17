@@ -28,9 +28,10 @@ interface Farm {
 
 interface FacilitiesManagementProps {
   currentUser?: any;
+  userFarms?: string[];
 }
 
-const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser }) => {
+const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser, userFarms = [] }) => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,13 +74,20 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
   const fetchData = async () => {
     try {
       // Fetch facilities with joined data
-      const { data: facilitiesData, error: facilitiesError } = await supabase
+      let query = supabase
         .from('facilities')
         .select(`
           *,
           farms(name)
         `)
         .order('created_at', { ascending: false });
+        
+      // Filter by user farms if user is a technician
+      if (currentUser?.role === 'technician' && userFarms.length > 0) {
+        query = query.in('farm_id', userFarms);
+      }
+      
+      const { data: facilitiesData, error: facilitiesError } = await query;
 
       if (facilitiesError) throw facilitiesError;
 
@@ -92,9 +100,16 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
       setFacilities(transformedFacilities);
 
       // Fetch farms
-      const { data: farmsData, error: farmsError } = await supabase
+      let farmsQuery = supabase
         .from('farms')
         .select('id, name');
+        
+      // Filter farms by user's assigned farms if they're a technician
+      if (currentUser?.role === 'technician' && userFarms.length > 0) {
+        farmsQuery = farmsQuery.in('id', userFarms);
+      }
+      
+      const { data: farmsData, error: farmsError } = await farmsQuery;
 
       if (farmsError) throw farmsError;
       setFarms(farmsData);

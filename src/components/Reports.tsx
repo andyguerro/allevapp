@@ -55,9 +55,10 @@ interface ReportsProps {
     filterUrgency?: string;
   };
   currentUser: any;
+  userFarms?: string[];
 }
 
-const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
+const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarms = [] }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -118,7 +119,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
   const fetchData = async () => {
     try {
       // Fetch reports with joined data and active quotes count
-      const { data: reportsData, error: reportsError } = await supabase
+      let query = supabase
         .from('reports')
         .select(`
           *,
@@ -129,6 +130,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
           created_user:users!reports_created_by_fkey(full_name)
         `)
         .order('created_at', { ascending: false });
+        
+      // Filter by user farms if user is a technician
+      if (currentUser.role === 'technician' && userFarms.length > 0) {
+        query = query.in('farm_id', userFarms);
+      }
+
+      const { data: quotesData, error: quotesError } = await query;
 
       if (reportsError) throw reportsError;
 
@@ -160,9 +168,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
       setReports(reportsWithQuotes);
 
       // Fetch farms
-      const { data: farmsData, error: farmsError } = await supabase
+      let farmsQuery = supabase
         .from('farms')
         .select('id, name');
+        
+      // Filter farms by user's assigned farms if they're a technician
+      if (currentUser.role === 'technician' && userFarms.length > 0) {
+        farmsQuery = farmsQuery.in('id', userFarms);
+      }
+      
+      const { data: farmsData, error: farmsError } = await farmsQuery;
 
       if (farmsError) throw farmsError;
       setFarms(farmsData);

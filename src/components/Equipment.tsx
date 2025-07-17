@@ -13,6 +13,7 @@ interface AttachmentFile {
 
 interface EquipmentProps {
   currentUser?: any;
+  userFarms?: string[];
 }
 
 interface Equipment {
@@ -37,7 +38,7 @@ interface Farm {
   name: string;
 }
 
-export default function Equipment({ currentUser }: EquipmentProps) {
+export default function Equipment({ currentUser, userFarms = [] }: EquipmentProps) {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +67,7 @@ export default function Equipment({ currentUser }: EquipmentProps) {
 
   const fetchEquipment = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('equipment')
         .select(`
           *,
@@ -75,6 +76,13 @@ export default function Equipment({ currentUser }: EquipmentProps) {
           )
         `)
         .order('created_at', { ascending: false });
+        
+      // Filter by user farms if user is a technician
+      if (currentUser?.role === 'technician' && userFarms.length > 0) {
+        query = query.in('farm_id', userFarms);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       setEquipment(data || []);
@@ -87,10 +95,17 @@ export default function Equipment({ currentUser }: EquipmentProps) {
 
   const fetchFarms = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('farms')
         .select('id, name')
         .order('name');
+        
+      // Filter farms by user's assigned farms if they're a technician
+      if (currentUser?.role === 'technician' && userFarms.length > 0) {
+        query = query.in('id', userFarms);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       setFarms(data || []);

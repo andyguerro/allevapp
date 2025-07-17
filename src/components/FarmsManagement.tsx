@@ -49,9 +49,10 @@ interface Project {
 
 interface FarmsManagementProps {
   onNavigate: (path: string) => void;
+  userFarms?: string[];
 }
 
-export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
+export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsManagementProps) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [activeTab, setActiveTab] = useState('reports');
@@ -76,10 +77,17 @@ export default function FarmsManagement({ onNavigate }: FarmsManagementProps) {
 
   const fetchFarms = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('farms')
         .select('*')
         .order('created_at', { ascending: false });
+        
+      // Filter by user farms if they're a technician with assigned farms
+      if (userFarms.length > 0) {
+        query = query.in('id', userFarms);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       setFarms(data || []);

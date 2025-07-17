@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 
 interface DashboardProps {
   onNavigate: (page: string, filters?: any) => void;
+  userFarms?: string[];
 }
 
 interface DashboardStats {
@@ -22,7 +23,7 @@ interface RecentReport {
   barn_name?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNavigate, userFarms = [] }) => {
   const [stats, setStats] = useState<DashboardStats>({
     totalReports: 0,
     openReports: 0,
@@ -39,16 +40,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const fetchDashboardData = async () => {
     try {
       // Fetch reports stats
-      const { data: reports, error: reportsError } = await supabase
+      let reportsQuery = supabase
         .from('reports')
         .select('id, status, urgency, title, created_at, farms(name)');
+        
+      // Filter by user farms if they're a technician with assigned farms
+      if (userFarms.length > 0) {
+        reportsQuery = reportsQuery.in('farm_id', userFarms);
+      }
+      
+      const { data: reports, error: reportsError } = await reportsQuery;
 
       if (reportsError) throw reportsError;
 
       // Fetch equipment count
-      const { count: equipmentCount, error: equipmentError } = await supabase
+      let equipmentQuery = supabase
         .from('equipment')
         .select('*', { count: 'exact', head: true });
+        
+      // Filter by user farms if they're a technician with assigned farms
+      if (userFarms.length > 0) {
+        equipmentQuery = equipmentQuery.in('farm_id', userFarms);
+      }
+      
+      const { count: equipmentCount, error: equipmentError } = await equipmentQuery;
 
       if (equipmentError) throw equipmentError;
 

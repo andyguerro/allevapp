@@ -16,17 +16,39 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageFilters, setPageFilters] = useState<any>({});
+  const [userFarms, setUserFarms] = useState<string[]>([]);
 
   const handleUserSelect = (user: any) => {
     setCurrentUser(user);
     // Salva l'utente nel localStorage per sessioni future
     localStorage.setItem('allevapp_current_user', JSON.stringify(user));
+    
+    // Fetch farms assigned to this user if they're a technician
+    if (user.role === 'technician') {
+      fetchUserFarms(user.id);
+    }
+  };
+
+  const fetchUserFarms = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('farm_technicians')
+        .select('farm_id')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      setUserFarms(data.map((item: any) => item.farm_id));
+    } catch (error) {
+      console.error('Error fetching user farms:', error);
+      setUserFarms([]);
+    }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('allevapp_current_user');
     setCurrentPage('dashboard');
+    setUserFarms([]);
   };
 
   // Controlla se c'è un utente salvato nel localStorage al caricamento
@@ -34,7 +56,13 @@ const App: React.FC = () => {
     const savedUser = localStorage.getItem('allevapp_current_user');
     if (savedUser) {
       try {
-        setCurrentUser(JSON.parse(savedUser));
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+        
+        // Fetch farms for technicians
+        if (user.role === 'technician') {
+          fetchUserFarms(user.id);
+        }
       } catch (error) {
         console.error('Errore nel parsing utente salvato:', error);
         localStorage.removeItem('allevapp_current_user');
@@ -70,11 +98,11 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} userFarms={userFarms} />;
       case 'reports':
-        return <Reports initialFilters={pageFilters} currentUser={currentUser} />;
+        return <Reports initialFilters={pageFilters} currentUser={currentUser} userFarms={userFarms} />;
       case 'equipment':
-        return <Equipment currentUser={currentUser} />;
+        return <Equipment currentUser={currentUser} userFarms={userFarms} />;
       case 'projects':
         return <Projects initialFilters={pageFilters} />;
       case 'quotes':
@@ -82,15 +110,15 @@ const App: React.FC = () => {
       case 'orders':
         return <Orders />;
       case 'farms':
-        return <FarmsManagement onNavigate={handleNavigate} />;
+        return <FarmsManagement onNavigate={handleNavigate} userFarms={userFarms} />;
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
-        return <FacilitiesManagement currentUser={currentUser} />;
+        return <FacilitiesManagement currentUser={currentUser} userFarms={userFarms} />;
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard onNavigate={handleNavigate} />;
+        return <Dashboard onNavigate={handleNavigate} userFarms={userFarms} />;
     }
   };
 
