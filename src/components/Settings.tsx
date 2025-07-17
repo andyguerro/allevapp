@@ -739,6 +739,10 @@ const Settings: React.FC = () => {
           <div className="flex items-center space-x-3">
             <button 
               onClick={async () => {
+                if (!confirm('Vuoi inviare un report di test? Questo verificherà la configurazione email.')) {
+                  return;
+                }
+                
                 try {
                   const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-daily-summary`, {
                     method: 'POST',
@@ -762,6 +766,12 @@ const Settings: React.FC = () => {
               className="bg-brand-blue text-white px-4 py-2 rounded-lg hover:bg-brand-blue-dark transition-colors"
             >
               Invia Report Test
+            </button>
+            <button
+              onClick={() => window.open('/storage-diagnostics', '_blank')}
+              className="bg-brand-coral text-white px-4 py-2 rounded-lg hover:bg-brand-coral-light transition-colors"
+            >
+              Test Storage
             </button>
             <span className="text-xs text-brand-gray">
               Invia un report di prova per verificare la configurazione
