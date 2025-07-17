@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail, Trash2, Paperclip } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Building } from 'lucide-react';
 import ReportDetailModal from './ReportDetailModal';
 import QuoteRequestModal from './QuoteRequestModal';
 import SearchFilters, { Option } from './SearchFilters';
@@ -69,7 +70,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
     status: [],
     urgency: [],
     farm: [],
-    assigned: []
+    assigned: [],
+    supplier: []
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -232,6 +234,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
         label: user.full_name
       }));
 
+      const supplierOptions: Option[] = suppliersData.map(supplier => ({
+        value: supplier.id,
+        label: supplier.name
+      }));
+
       setFilterOptions([
         {
           id: 'status',
@@ -252,6 +259,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
           id: 'assigned',
           label: 'Assegnato a',
           options: userOptions
+        },
+        {
+          id: 'supplier',
+          label: 'Fornitore',
+          options: supplierOptions
         }
       ]);
 
@@ -407,7 +419,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       status: [],
       urgency: [],
       farm: [],
-      assigned: []
+      assigned: [],
+      supplier: []
     });
     setSearchTerm('');
   };
@@ -480,7 +493,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
     const matchesAssigned = selectedFilters.assigned.length === 0 || 
                             selectedFilters.assigned.some(option => option.value === report.assigned_to);
     
-    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesAssigned;
+    const matchesSupplier = selectedFilters.supplier.length === 0 || 
+                           (report.supplier_id && selectedFilters.supplier.some(option => option.value === report.supplier_id));
+    
+    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesAssigned && matchesSupplier;
   });
 
   const getAvailableEquipment = () => {
@@ -501,60 +517,120 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <Plus size={20} />
-          <span>Nuova Segnalazione</span>
-        </button>
+           onClick={() => setShowCreateModal(true)}
+           className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+         >
+           <Plus size={20} />
+           <span>Nuova Segnalazione</span>
+         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-brand-gray">Aperte</p>
-              <p className="text-2xl font-bold text-brand-red">
-                {reports.filter(r => r.status === 'open').length}
-              </p>
-            </div>
-            <AlertTriangle size={24} className="text-brand-red" />
+      {/* Status Filter Buttons */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button
+          onClick={() => {
+            setSelectedFilters({
+              ...selectedFilters,
+              status: [{ value: 'open', label: 'Aperta' }]
+            });
+          }}
+          className="flex items-center space-x-2 px-4 py-3 bg-white rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200"
+        >
+          <AlertTriangle size={20} className="text-brand-red" />
+          <div>
+            <p className="font-medium text-brand-blue">Aperte</p>
+            <p className="text-xl font-bold text-brand-red">
+              {reports.filter(r => r.status === 'open').length}
+            </p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-brand-gray">In Corso</p>
-              <p className="text-2xl font-bold text-brand-coral">
-                {reports.filter(r => r.status === 'in_progress').length}
-              </p>
-            </div>
-            <Clock size={24} className="text-brand-coral" />
+        </button>
+        
+        <button
+          onClick={() => {
+            setSelectedFilters({
+              ...selectedFilters,
+              status: [{ value: 'in_progress', label: 'In Corso' }]
+            });
+          }}
+          className="flex items-center space-x-2 px-4 py-3 bg-white rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200"
+        >
+          <Clock size={20} className="text-brand-coral" />
+          <div>
+            <p className="font-medium text-brand-blue">In Corso</p>
+            <p className="text-xl font-bold text-brand-coral">
+              {reports.filter(r => r.status === 'in_progress').length}
+            </p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-brand-gray">Urgenti</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {reports.filter(r => r.urgency === 'high' || r.urgency === 'critical').length}
-              </p>
-            </div>
-            <AlertTriangle size={24} className="text-orange-500" />
+        </button>
+        
+        <button
+          onClick={() => {
+            setSelectedFilters({
+              ...selectedFilters,
+              urgency: [
+                { value: 'high', label: 'Alta' },
+                { value: 'critical', label: 'Critica' }
+              ]
+            });
+          }}
+          className="flex items-center space-x-2 px-4 py-3 bg-white rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200"
+        >
+          <AlertTriangle size={20} className="text-orange-500" />
+          <div>
+            <p className="font-medium text-brand-blue">Urgenti</p>
+            <p className="text-xl font-bold text-orange-600">
+              {reports.filter(r => r.urgency === 'high' || r.urgency === 'critical').length}
+            </p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-brand-gray">Risolte</p>
-              <p className="text-2xl font-bold text-brand-blue">
-                {reports.filter(r => r.status === 'resolved').length}
-              </p>
-            </div>
-            <CheckCircle size={24} className="text-brand-blue" />
+        </button>
+        
+        <button
+          onClick={() => {
+            setSelectedFilters({
+              ...selectedFilters,
+              status: [{ value: 'resolved', label: 'Risolta' }]
+            });
+          }}
+          className="flex items-center space-x-2 px-4 py-3 bg-white rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200"
+        >
+          <CheckCircle size={20} className="text-brand-blue" />
+          <div>
+            <p className="font-medium text-brand-blue">Risolte</p>
+            <p className="text-xl font-bold text-brand-blue">
+              {reports.filter(r => r.status === 'resolved').length}
+            </p>
           </div>
-        </div>
+        </button>
+        
+        <button
+          onClick={() => {
+            setSelectedFilters({
+              ...selectedFilters,
+              status: [{ value: 'closed', label: 'Chiusa' }]
+            });
+          }}
+          className="flex items-center space-x-2 px-4 py-3 bg-white rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200"
+        >
+          <CheckCircle size={20} className="text-brand-gray" />
+          <div>
+            <p className="font-medium text-brand-blue">Chiuse</p>
+            <p className="text-xl font-bold text-brand-gray">
+              {reports.filter(r => r.status === 'closed').length}
+            </p>
+          </div>
+        </button>
+        
+        <button
+          onClick={clearAllFilters}
+          className="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-brand-blue/10 to-brand-coral/10 rounded-lg shadow-md border border-brand-coral/20 hover:shadow-lg transition-all duration-200 ml-auto"
+        >
+          <div>
+            <p className="font-medium text-brand-blue">Tutte</p>
+            <p className="text-xl font-bold text-brand-blue">
+              {reports.length}
+            </p>
+          </div>
+        </button>
       </div>
 
       {/* Filters */}
