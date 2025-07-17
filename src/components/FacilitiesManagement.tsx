@@ -881,6 +881,7 @@ const FacilitiesManagement: React.FC<FacilitiesManagementProps> = ({ currentUser
         <FacilityDetailModal
           facilityId={selectedFacilityForDetail}
           onClose={() => setSelectedFacilityForDetail(null)}
+          currentUser={currentUser}
           onEdit={(facility) => {
             setSelectedFacilityForDetail(null);
             handleEdit(facility);

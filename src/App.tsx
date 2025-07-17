@@ -54,7 +54,7 @@ const App: React.FC = () => {
       case 'reports':
         return <Reports initialFilters={pageFilters} currentUser={currentUser} />;
       case 'equipment':
-        return <Equipment />;
+        return <Equipment currentUser={currentUser} />;
       case 'projects':
         return <Projects initialFilters={pageFilters} />;
       case 'quotes':
@@ -66,7 +66,7 @@ const App: React.FC = () => {
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
-        return <FacilitiesManagement />;
+        return <FacilitiesManagement currentUser={currentUser} />;
       case 'settings':
         return <Settings />;
       default:

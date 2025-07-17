@@ -1,17 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ClipboardList, Edit, Trash2, AlertTriangle, Clock, CheckCircle, User, Building, Package, Paperclip, Upload, File, Image, FileText, X, Tag, Eye } from 'lucide-react';
+import { Plus, ClipboardList, AlertTriangle, Clock, CheckCircle, Edit, Eye, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import AttachmentsManager from './AttachmentsManager';
 import ReportDetailModal from './ReportDetailModal';
+import QuoteRequestModal from './QuoteRequestModal';
 import SearchFilters, { Option } from './SearchFilters';
-
-interface ReportsProps {
-  initialFilters?: {
-    filterStatus?: string;
-    filterUrgency?: string;
-  };
-  currentUser?: any;
-}
 
 interface Report {
   id: string;
@@ -33,6 +25,7 @@ interface Report {
   supplier_name?: string;
   assigned_user_name?: string;
   created_user_name?: string;
+  active_quotes_count?: number;
 }
 
 interface Farm {
@@ -56,33 +49,15 @@ interface User {
   full_name: string;
 }
 
-interface AttachmentFile {
-  file: File;
-  label: string;
-  id: string;
+interface ReportsProps {
+  initialFilters?: {
+    filterStatus?: string;
+    filterUrgency?: string;
+  };
+  currentUser: any;
 }
 
-const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) => {
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'open': return 'Aperta';
-      case 'in_progress': return 'In Corso';
-      case 'resolved': return 'Risolta';
-      case 'closed': return 'Chiusa';
-      default: return status;
-    }
-  };
-
-  const getUrgencyText = (urgency: string) => {
-    switch (urgency) {
-      case 'low': return 'Bassa';
-      case 'medium': return 'Media';
-      case 'high': return 'Alta';
-      case 'critical': return 'Critica';
-      default: return urgency;
-    }
-  };
-
+const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser }) => {
   const [reports, setReports] = useState<Report[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -90,25 +65,17 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<Record<string, Option[]>>({
-    status: initialFilters?.filterStatus ? [{ value: initialFilters.filterStatus, label: getStatusText(initialFilters.filterStatus) }] : [],
-    urgency: initialFilters?.filterUrgency === 'urgent' ? [
-      { value: 'high', label: 'Alta' },
-      { value: 'critical', label: 'Critica' }
-    ] : [],
+    status: [],
+    urgency: [],
     farm: [],
-    assigned_to: []
+    assigned: []
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [selectedReportTitle, setSelectedReportTitle] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [dragOver, setDragOver] = useState(false);
-  const [attachmentFiles, setAttachmentFiles] = useState<AttachmentFile[]>([]);
-
-  // Detail modal state
   const [selectedReportForDetail, setSelectedReportForDetail] = useState<string | null>(null);
+  const [selectedReportForQuote, setSelectedReportForQuote] = useState<Report | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Prepare filter options
   const [filterOptions, setFilterOptions] = useState<Array<{ id: string; label: string; options: Option[] }>>([]);
@@ -130,14 +97,27 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
 
   // Apply initial filters when component mounts
   useEffect(() => {
-    if (initialFilters?.filterStatus || initialFilters?.filterUrgency) {
-      // Already handled in useState initialization
+    if (initialFilters) {
+      const newFilters: Record<string, Option[]> = { ...selectedFilters };
+      
+      if (initialFilters.filterStatus) {
+        newFilters.status = [{ value: initialFilters.filterStatus, label: getStatusText(initialFilters.filterStatus) }];
+      }
+      
+      if (initialFilters.filterUrgency === 'urgent') {
+        newFilters.urgency = [
+          { value: 'high', label: 'Alta' },
+          { value: 'critical', label: 'Critica' }
+        ];
+      }
+      
+      setSelectedFilters(newFilters);
     }
   }, [initialFilters]);
 
   const fetchData = async () => {
     try {
-      // Fetch reports with joined data
+      // Fetch reports with joined data and active quotes count
       const { data: reportsData, error: reportsError } = await supabase
         .from('reports')
         .select(`
@@ -152,17 +132,32 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
 
       if (reportsError) throw reportsError;
 
-      // Transform data
-      const transformedReports = reportsData.map(report => ({
-        ...report,
-        farm_name: report.farms?.name,
-        equipment_name: report.equipment?.name,
-        supplier_name: report.suppliers?.name,
-        assigned_user_name: report.assigned_user?.full_name,
-        created_user_name: report.created_user?.full_name
-      }));
+      // Get active quotes count for each report
+      const reportsWithQuotes = await Promise.all(
+        reportsData.map(async (report) => {
+          const { data: quotes, error: quotesError } = await supabase
+            .from('quotes')
+            .select('id')
+            .eq('report_id', report.id)
+            .in('status', ['requested', 'received']);
 
-      setReports(transformedReports);
+          if (quotesError) {
+            console.error('Error fetching quotes for report:', quotesError);
+          }
+
+          return {
+            ...report,
+            farm_name: report.farms?.name,
+            equipment_name: report.equipment?.name,
+            supplier_name: report.suppliers?.name,
+            assigned_user_name: report.assigned_user?.full_name,
+            created_user_name: report.created_user?.full_name,
+            active_quotes_count: quotes?.length || 0
+          };
+        })
+      );
+
+      setReports(reportsWithQuotes);
 
       // Fetch farms
       const { data: farmsData, error: farmsError } = await supabase
@@ -239,7 +234,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
           options: farmOptions
         },
         {
-          id: 'assigned_to',
+          id: 'assigned',
           label: 'Assegnato a',
           options: userOptions
         }
@@ -252,117 +247,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     }
   };
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    
-    const newFiles: AttachmentFile[] = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Verifica dimensione file (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`Il file "${file.name}" è troppo grande. Dimensione massima: 10MB`);
-        continue;
-      }
-      
-      newFiles.push({
-        file,
-        label: file.name.split('.')[0], // Nome file senza estensione come default
-        id: Math.random().toString(36).substring(2)
-      });
-    }
-    
-    setAttachmentFiles(prev => [...prev, ...newFiles]);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-  };
-
-  const removeAttachmentFile = (id: string) => {
-    setAttachmentFiles(prev => prev.filter(f => f.id !== id));
-  };
-
-  const updateAttachmentLabel = (id: string, label: string) => {
-    setAttachmentFiles(prev => prev.map(f => f.id === id ? { ...f, label } : f));
-  };
-
-  const uploadAttachments = async (reportId: string) => {
-    if (attachmentFiles.length === 0) return;
-
-    try {
-      if (!currentUser) {
-        console.warn('No current user for attachments');
-        return; // Non bloccare la creazione della segnalazione
-      }
-
-      for (const attachmentFile of attachmentFiles) {
-        try {
-          // Genera un nome file unico
-          const fileExt = attachmentFile.file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `report/${reportId}/${fileName}`;
-
-          // Try to upload file to Supabase Storage
-          const { error: uploadError } = await supabase.storage
-            .from('attachments')
-            .upload(filePath, attachmentFile.file);
-
-          if (uploadError) {
-            console.warn(`Upload error for ${attachmentFile.file.name}:`, uploadError);
-            continue; // Continua con gli altri file
-          }
-
-          // Salva i metadati nel database
-          const { error: dbError } = await supabase
-            .from('attachments')
-            .insert({
-              entity_type: 'report',
-              entity_id: reportId,
-              file_name: attachmentFile.file.name,
-              file_path: filePath,
-              custom_label: attachmentFile.label || attachmentFile.file.name,
-              file_size: attachmentFile.file.size,
-              mime_type: attachmentFile.file.type,
-              created_by: currentUser.id
-            });
-
-          if (dbError) {
-            console.warn(`Database error for ${attachmentFile.file.name}:`, dbError);
-          }
-        } catch (fileError) {
-          console.warn(`Error uploading ${attachmentFile.file.name}:`, fileError);
-        }
-      }
-    } catch (error) {
-      console.warn('Error uploading attachments:', error);
-      // Non bloccare la creazione della segnalazione per errori di upload
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      if (!currentUser) {
-        alert('Errore: Nessun utente selezionato.');
-        return;
-      }
-
-      const { data: newReport, error } = await supabase
+      const { error } = await supabase
         .from('reports')
         .insert({
           title: formData.title,
@@ -371,19 +260,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
           equipment_id: formData.equipment_id || null,
           supplier_id: formData.supplier_id || null,
           assigned_to: formData.assigned_to,
-          created_by: currentUser.id,
           urgency: formData.urgency,
-          notes: formData.notes || null
-        })
-        .select()
-        .single();
+          notes: formData.notes || null,
+          created_by: currentUser.id
+        });
 
       if (error) throw error;
-
-      // Upload attachments if any
-      if (attachmentFiles.length > 0) {
-        await uploadAttachments(newReport.id);
-      }
 
       await fetchData();
       resetForm();
@@ -391,21 +273,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
       console.error('Errore nel creare segnalazione:', error);
       alert('Errore nel creare la segnalazione');
     }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      description: '',
-      farm_id: '',
-      equipment_id: '',
-      supplier_id: '',
-      assigned_to: '',
-      urgency: 'medium',
-      notes: ''
-    });
-    setAttachmentFiles([]);
-    setShowCreateModal(false);
   };
 
   const handleEdit = (report: Report) => {
@@ -453,6 +320,20 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      farm_id: '',
+      equipment_id: '',
+      supplier_id: '',
+      assigned_to: '',
+      urgency: 'medium',
+      notes: ''
+    });
+    setShowCreateModal(false);
+  };
+
   const resetEditForm = () => {
     setFormData({
       title: '',
@@ -466,23 +347,6 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     });
     setEditingReport(null);
     setShowEditModal(false);
-  };
-
-  const handleDelete = async (reportId: string) => {
-    if (!confirm('Sei sicuro di voler eliminare questa segnalazione?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .delete()
-        .eq('id', reportId);
-
-      if (error) throw error;
-      await fetchData();
-    } catch (error) {
-      console.error('Errore nell\'eliminazione segnalazione:', error);
-      alert('Errore nell\'eliminazione della segnalazione');
-    }
   };
 
   const updateReportStatus = async (reportId: string, newStatus: string) => {
@@ -499,6 +363,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
       alert('Errore nell\'aggiornamento dello stato');
     }
   };
+
   const handleFilterChange = (filterId: string, selected: Option[]) => {
     setSelectedFilters(prev => ({ ...prev, [filterId]: selected }));
   };
@@ -508,7 +373,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
       status: [],
       urgency: [],
       farm: [],
-      assigned_to: []
+      assigned: []
     });
     setSearchTerm('');
   };
@@ -543,22 +408,24 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     }
   };
 
-  const getFileIcon = (mimeType?: string) => {
-    if (!mimeType) return <File size={16} className="text-brand-gray" />;
-    
-    if (mimeType.startsWith('image/')) {
-      return <Image size={16} className="text-brand-blue" />;
-    } else if (mimeType.includes('pdf') || mimeType.includes('document')) {
-      return <FileText size={16} className="text-brand-red" />;
-    } else {
-      return <File size={16} className="text-brand-gray" />;
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'open': return 'Aperta';
+      case 'in_progress': return 'In Corso';
+      case 'resolved': return 'Risolta';
+      case 'closed': return 'Chiusa';
+      default: return status;
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  const getUrgencyText = (urgency: string) => {
+    switch (urgency) {
+      case 'low': return 'Bassa';
+      case 'medium': return 'Media';
+      case 'high': return 'Alta';
+      case 'critical': return 'Critica';
+      default: return urgency;
+    }
   };
 
   const filteredReports = reports.filter(report => {
@@ -576,13 +443,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
     const matchesFarm = selectedFilters.farm.length === 0 || 
                         selectedFilters.farm.some(option => option.value === report.farm_id);
     
-    const matchesAssignedTo = selectedFilters.assigned_to.length === 0 || 
-                              selectedFilters.assigned_to.some(option => option.value === report.assigned_to);
+    const matchesAssigned = selectedFilters.assigned.length === 0 || 
+                            selectedFilters.assigned.some(option => option.value === report.assigned_to);
     
-    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesAssignedTo;
+    return matchesSearch && matchesStatus && matchesUrgency && matchesFarm && matchesAssigned;
   });
 
-  // Filter equipment based on selected farm
   const getAvailableEquipment = () => {
     if (!formData.farm_id) return [];
     return equipment.filter(eq => eq.farm_id === formData.farm_id);
@@ -599,86 +465,60 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl sm:text-3xl font-bold text-brand-blue">Segnalazioni</h1>
+        <h1 className="text-3xl font-bold text-brand-blue">Segnalazioni</h1>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-1 sm:space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
         >
-          <Plus size={18} className="sm:w-5 sm:h-5" />
-          <span className="text-sm sm:text-base">Nuova</span>
-          <span className="hidden sm:inline">Segnalazione</span>
+          <Plus size={20} />
+          <span>Nuova Segnalazione</span>
         </button>
       </div>
 
-      {/* Active Filters Indicator */}
-      {(selectedFilters.status.length > 0 || selectedFilters.urgency.length > 0) && (
-        <div className="bg-brand-blue/10 border border-brand-blue/20 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-brand-blue">Filtri attivi:</span>
-              {selectedFilters.status.length > 0 && (
-                <span className="px-2 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-xs">
-                  Stato: {selectedFilters.status.map(s => s.label).join(', ')}
-                </span>
-              )}
-              {selectedFilters.urgency.length > 0 && (
-                <span className="px-2 py-1 bg-brand-red/20 text-brand-red rounded-full text-xs">
-                  Urgenza: {selectedFilters.urgency.map(u => u.label).join(', ')}
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setSelectedFilters(prev => ({ ...prev, status: [], urgency: [] }))}
-              className="text-sm text-brand-gray hover:text-brand-blue transition-colors"
-            >
-              Rimuovi filtri
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-brand-gray">Aperte</p>
-              <p className="text-xl sm:text-2xl font-bold text-brand-red">
+              <p className="text-sm font-medium text-brand-gray">Aperte</p>
+              <p className="text-2xl font-bold text-brand-red">
                 {reports.filter(r => r.status === 'open').length}
               </p>
             </div>
-            <AlertTriangle size={20} className="text-brand-red sm:w-6 sm:h-6" />
+            <AlertTriangle size={24} className="text-brand-red" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-brand-gray">In Corso</p>
-              <p className="text-xl sm:text-2xl font-bold text-brand-coral">
+              <p className="text-sm font-medium text-brand-gray">In Corso</p>
+              <p className="text-2xl font-bold text-brand-coral">
                 {reports.filter(r => r.status === 'in_progress').length}
               </p>
             </div>
-            <Clock size={20} className="text-brand-coral sm:w-6 sm:h-6" />
+            <Clock size={24} className="text-brand-coral" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-brand-gray">Urgenti</p>
-              <p className="text-xl sm:text-2xl font-bold text-orange-600">
+              <p className="text-sm font-medium text-brand-gray">Urgenti</p>
+              <p className="text-2xl font-bold text-orange-600">
                 {reports.filter(r => r.urgency === 'high' || r.urgency === 'critical').length}
               </p>
             </div>
-            <AlertTriangle size={20} className="text-orange-500 sm:w-6 sm:h-6" />
+            <AlertTriangle size={24} className="text-orange-500" />
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-brand-gray">Totali</p>
-              <p className="text-xl sm:text-2xl font-bold text-brand-blue">{reports.length}</p>
+              <p className="text-sm font-medium text-brand-gray">Risolte</p>
+              <p className="text-2xl font-bold text-brand-blue">
+                {reports.filter(r => r.status === 'resolved').length}
+              </p>
             </div>
-            <ClipboardList size={20} className="text-brand-blue sm:w-6 sm:h-6" />
+            <CheckCircle size={24} className="text-brand-blue" />
           </div>
         </div>
       </div>
@@ -697,12 +537,12 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
       {/* Reports List */}
       <div className="space-y-4">
         {filteredReports.map((report) => (
-          <div key={report.id} className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-4 sm:p-6 hover:shadow-xl transition-all duration-200">
-            <div className="flex flex-col lg:flex-row lg:items-start justify-between space-y-4 lg:space-y-0">
+          <div key={report.id} className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-6 hover:shadow-xl transition-all duration-200">
+            <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
+                <div className="flex items-center space-x-3 mb-3">
                   {getStatusIcon(report.status)}
-                  <h3 className="text-base sm:text-lg font-semibold text-brand-blue flex-1 min-w-0">{report.title}</h3>
+                  <h3 className="text-lg font-semibold text-brand-blue">{report.title}</h3>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(report.status)}`}>
                     {getStatusText(report.status)}
                   </span>
@@ -711,19 +551,17 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                   </span>
                 </div>
                 
-                <p className="text-brand-gray mb-4 text-sm sm:text-base">{report.description}</p>
+                <p className="text-brand-gray mb-4">{report.description}</p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="font-medium text-brand-blue">Allevamento:</span>
                     <p className="text-brand-gray">{report.farm_name}</p>
                   </div>
-                  {report.equipment_name && (
-                    <div>
-                      <span className="font-medium text-brand-blue">Attrezzatura:</span>
-                      <p className="text-brand-gray">{report.equipment_name}</p>
-                    </div>
-                  )}
+                  <div>
+                    <span className="font-medium text-brand-blue">Attrezzatura:</span>
+                    <p className="text-brand-gray">{report.equipment_name || 'N/A'}</p>
+                  </div>
                   <div>
                     <span className="font-medium text-brand-blue">Assegnato a:</span>
                     <p className="text-brand-gray">{report.assigned_user_name}</p>
@@ -732,86 +570,75 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                     <span className="font-medium text-brand-blue">Creato da:</span>
                     <p className="text-brand-gray">{report.created_user_name}</p>
                   </div>
-                  <div>
-                    <span className="font-medium text-brand-blue">Creato il:</span>
-                    <p className="text-brand-gray">{new Date(report.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-brand-blue">Aggiornato il:</span>
-                    <p className="text-brand-gray">{new Date(report.updated_at).toLocaleDateString()}</p>
-                  </div>
                 </div>
-                
+
                 {report.notes && (
-                  <div className="mt-3 sm:mt-4 p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
+                  <div className="mt-4 p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/10">
                     <span className="font-medium text-brand-blue">Note:</span>
                     <p className="text-brand-gray text-sm mt-1">{report.notes}</p>
                   </div>
                 )}
               </div>
               
-              <div className="flex items-center justify-end space-x-2 lg:ml-4">
-                <button 
-                  onClick={() => {
-                    setSelectedReportId(report.id);
-                    setSelectedReportTitle(report.title);
-                  }}
-                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10"
-                  title="Gestisci allegati"
-                >
-                  <Paperclip size={18} />
-                </button>
-                <button 
+              <div className="flex items-center space-x-2 ml-4">
+                <button
                   onClick={() => setSelectedReportForDetail(report.id)}
-                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors rounded-lg hover:bg-brand-blue/10"
+                  className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
                   title="Visualizza dettagli"
                 >
                   <Eye size={18} />
                 </button>
+                <button
+                  onClick={() => setSelectedReportForQuote(report)}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors relative"
+                  title="Richiedi preventivo"
+                >
+                  <Mail size={18} />
+                  {report.active_quotes_count! > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {report.active_quotes_count}
+                    </span>
+                  )}
+                </button>
                 <button 
                   onClick={() => handleEdit(report)}
-                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors rounded-lg hover:bg-brand-coral/10"
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
                   title="Modifica segnalazione"
                 >
                   <Edit size={18} />
                 </button>
-                <button 
-                  onClick={() => handleDelete(report.id)}
-                  className="p-2 text-brand-gray hover:text-brand-red transition-colors rounded-lg hover:bg-brand-red/10"
-                  title="Elimina segnalazione"
-                >
-                  <Trash2 size={18} />
-                </button>
               </div>
-              
-              {/* Status Change Buttons */}
-              {report.status !== 'closed' && (
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-medium text-brand-blue">Cambia stato:</span>
-                  {report.status !== 'in_progress' && (
-                    <button
-                      onClick={() => updateReportStatus(report.id, 'in_progress')}
-                      className="px-3 py-1 bg-brand-coral/10 text-brand-coral rounded-lg text-xs hover:bg-brand-coral/20 transition-colors"
-                    >
-                      In Corso
-                    </button>
-                  )}
-                  {report.status !== 'resolved' && (
-                    <button
-                      onClick={() => updateReportStatus(report.id, 'resolved')}
-                      className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-lg text-xs hover:bg-brand-blue/20 transition-colors"
-                    >
-                      Risolto
-                    </button>
-                  )}
+            </div>
+
+            {/* Status Change Buttons */}
+            <div className="mt-4 flex items-center space-x-2">
+              <span className="text-xs font-medium text-brand-blue">Cambia stato:</span>
+              <div className="flex space-x-1">
+                {report.status !== 'in_progress' && (
+                  <button
+                    onClick={() => updateReportStatus(report.id, 'in_progress')}
+                    className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs hover:bg-yellow-200 transition-colors"
+                  >
+                    In Corso
+                  </button>
+                )}
+                {report.status !== 'resolved' && (
+                  <button
+                    onClick={() => updateReportStatus(report.id, 'resolved')}
+                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition-colors"
+                  >
+                    Risolvi
+                  </button>
+                )}
+                {report.status !== 'closed' && (
                   <button
                     onClick={() => updateReportStatus(report.id, 'closed')}
-                    className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs hover:bg-green-200 transition-colors"
+                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 transition-colors"
                   >
                     Chiudi
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -820,266 +647,13 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold text-brand-blue mb-4">Nuova Segnalazione</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Titolo Segnalazione
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    placeholder="Es: Problema con sistema di ventilazione"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Descrizione
-                  </label>
-                  <textarea
-                    required
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    placeholder="Descrivi dettagliatamente il problema..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Allevamento
-                  </label>
-                  <select
-                    required
-                    value={formData.farm_id}
-                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, equipment_id: '' })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="">Seleziona allevamento</option>
-                    {farms.map(farm => (
-                      <option key={farm.id} value={farm.id}>{farm.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Attrezzatura (opzionale)
-                  </label>
-                  <select
-                    value={formData.equipment_id}
-                    onChange={(e) => setFormData({ ...formData, equipment_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    disabled={!formData.farm_id}
-                  >
-                    <option value="">Seleziona attrezzatura</option>
-                    {getAvailableEquipment().map(eq => (
-                      <option key={eq.id} value={eq.id}>{eq.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Fornitore (opzionale)
-                  </label>
-                  <select
-                    value={formData.supplier_id}
-                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="">Seleziona fornitore</option>
-                    {suppliers.map(supplier => (
-                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Assegna a
-                  </label>
-                  <select
-                    required
-                    value={formData.assigned_to}
-                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="">Seleziona utente</option>
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>{user.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Urgenza
-                  </label>
-                  <select
-                    value={formData.urgency}
-                    onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                  >
-                    <option value="low">Bassa</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta</option>
-                    <option value="critical">Critica</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-brand-blue mb-2">
-                    Note aggiuntive (opzionale)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
-                    placeholder="Note aggiuntive..."
-                  />
-                </div>
-              </div>
-
-              {/* Attachments Section */}
-              <div className="border-t border-brand-coral/20 pt-6">
-                <h3 className="text-lg font-semibold text-brand-blue mb-4">Allegati (opzionale)</h3>
-                
-                {/* Upload Area */}
-                <div
-                  className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 mb-4 ${
-                    dragOver
-                      ? 'border-brand-red bg-brand-red/5'
-                      : 'border-brand-gray/30 hover:border-brand-coral'
-                  }`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                >
-                  <Upload size={32} className={`mx-auto mb-3 ${dragOver ? 'text-brand-red' : 'text-brand-gray'}`} />
-                  <h4 className="text-md font-medium text-brand-blue mb-2">
-                    Aggiungi allegati alla segnalazione
-                  </h4>
-                  <p className="text-brand-gray mb-3 text-sm">
-                    Trascina i file qui o clicca per selezionare
-                  </p>
-                  <p className="text-xs text-brand-gray mb-3">
-                    Formati supportati: immagini, PDF, documenti • Max 10MB per file
-                  </p>
-                  
-                  <input
-                    type="file"
-                    onChange={(e) => handleFileSelect(e.target.files)}
-                    className="hidden"
-                    id="attachment-upload"
-                    accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
-                    multiple
-                  />
-                  <label
-                    htmlFor="attachment-upload"
-                    className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 cursor-pointer inline-flex items-center space-x-2"
-                  >
-                    <Plus size={16} />
-                    <span>Seleziona File</span>
-                  </label>
-                </div>
-
-                {/* Selected Files List */}
-                {attachmentFiles.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-brand-blue">
-                      File selezionati ({attachmentFiles.length})
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {attachmentFiles.map((attachmentFile) => (
-                        <div
-                          key={attachmentFile.id}
-                          className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 rounded-lg border border-brand-coral/20 p-3"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3 flex-1">
-                              <div className="p-2 bg-white rounded-lg shadow-sm">
-                                {getFileIcon(attachmentFile.file.type)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Tag size={12} className="text-brand-coral" />
-                                  <input
-                                    type="text"
-                                    value={attachmentFile.label}
-                                    onChange={(e) => updateAttachmentLabel(attachmentFile.id, e.target.value)}
-                                    className="text-sm font-medium text-brand-blue bg-transparent border-none outline-none flex-1"
-                                    placeholder="Etichetta file..."
-                                  />
-                                </div>
-                                <p className="text-xs text-brand-gray truncate">
-                                  {attachmentFile.file.name}
-                                </p>
-                                <p className="text-xs text-brand-gray">
-                                  {formatFileSize(attachmentFile.file.size)}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => removeAttachmentFile(attachmentFile.id)}
-                              className="p-1 text-brand-gray hover:text-brand-red transition-colors"
-                              title="Rimuovi file"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-brand-coral/20">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 flex items-center space-x-2"
-                >
-                  <ClipboardList size={16} />
-                  <span>Crea Segnalazione</span>
-                  {attachmentFiles.length > 0 && (
-                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
-                      +{attachmentFiles.length} file
-                    </span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && editingReport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-brand-blue mb-4">Modifica Segnalazione</h2>
-            
-            <form onSubmit={handleUpdate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Titolo Segnalazione
+                  Titolo
                 </label>
                 <input
                   type="text"
@@ -1137,9 +711,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-brand-blue mb-2">
                     Fornitore (opzionale)
@@ -1192,7 +764,157 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
 
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
-                  Note aggiuntive (opzionale)
+                  Note (opzionale)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-2 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200"
+                >
+                  Crea Segnalazione
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Modifica Segnalazione</h2>
+            
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Titolo
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Descrizione
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Allevamento
+                  </label>
+                  <select
+                    required
+                    value={formData.farm_id}
+                    onChange={(e) => setFormData({ ...formData, farm_id: e.target.value, equipment_id: '' })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona allevamento</option>
+                    {farms.map(farm => (
+                      <option key={farm.id} value={farm.id}>{farm.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Attrezzatura (opzionale)
+                  </label>
+                  <select
+                    value={formData.equipment_id}
+                    onChange={(e) => setFormData({ ...formData, equipment_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                    disabled={!formData.farm_id}
+                  >
+                    <option value="">Seleziona attrezzatura</option>
+                    {getAvailableEquipment().map(eq => (
+                      <option key={eq.id} value={eq.id}>{eq.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Fornitore (opzionale)
+                  </label>
+                  <select
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona fornitore</option>
+                    {suppliers.map(supplier => (
+                      <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Assegna a
+                  </label>
+                  <select
+                    required
+                    value={formData.assigned_to}
+                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Seleziona utente</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>{user.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Urgenza
+                </label>
+                <select
+                  value={formData.urgency}
+                  onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="low">Bassa</option>
+                  <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="critical">Critica</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Note (opzionale)
                 </label>
                 <textarea
                   rows={2}
@@ -1222,27 +944,31 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters = {}, currentUser }) =
         </div>
       )}
 
-      {/* Attachments Manager */}
-      {selectedReportId && (
-        <AttachmentsManager
-          entityType="report"
-          entityId={selectedReportId}
-          entityName={selectedReportTitle}
-          onClose={() => {
-            setSelectedReportId(null);
-            setSelectedReportTitle('');
-          }}
-        />
-      )}
-
       {/* Report Detail Modal */}
       {selectedReportForDetail && (
         <ReportDetailModal
           reportId={selectedReportForDetail}
+          currentUser={currentUser}
           onClose={() => setSelectedReportForDetail(null)}
           onEdit={(report) => {
             setSelectedReportForDetail(null);
             handleEdit(report);
+          }}
+        />
+      )}
+
+      {/* Quote Request Modal */}
+      {selectedReportForQuote && (
+        <QuoteRequestModal
+          entityType="report"
+          entityId={selectedReportForQuote.id}
+          entityName={selectedReportForQuote.title}
+          entityDescription={selectedReportForQuote.description}
+          farmName={selectedReportForQuote.farm_name}
+          currentUser={currentUser}
+          onClose={() => {
+            setSelectedReportForQuote(null);
+            fetchData(); // Refresh to update active quotes count
           }}
         />
       )}

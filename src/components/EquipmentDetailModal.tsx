@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Package, Building, Calendar, AlertTriangle, CheckCircle, Clock, Paperclip, Edit, Wrench } from 'lucide-react';
+import { X, Package, Building, Calendar, AlertTriangle, CheckCircle, Clock, Paperclip, Edit, Wrench, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
+import QuoteRequestModal from './QuoteRequestModal';
 
 interface EquipmentDetailModalProps {
   equipmentId: string;
   onClose: () => void;
   onEdit?: (equipment: any) => void;
+  currentUser?: any;
 }
 
 interface EquipmentDetail {
@@ -25,13 +27,16 @@ interface EquipmentDetail {
   farm_name?: string;
 }
 
-const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId, onClose, onEdit }) => {
+const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId, onClose, onEdit, currentUser }) => {
   const [equipment, setEquipment] = useState<EquipmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showQuoteRequest, setShowQuoteRequest] = useState(false);
+  const [activeQuotes, setActiveQuotes] = useState<number>(0);
 
   useEffect(() => {
     fetchEquipmentDetail();
+    fetchActiveQuotes();
   }, [equipmentId]);
 
   const fetchEquipmentDetail = async () => {
@@ -58,6 +63,22 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
     }
   };
 
+  const fetchActiveQuotes = async () => {
+    try {
+      // Check for quotes related to this equipment through reports or direct farm association
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('id, title')
+        .eq('farm_id', equipment?.farm_id)
+        .in('status', ['requested', 'received'])
+        .ilike('title', `%${equipment?.name}%`);
+
+      if (error) throw error;
+      setActiveQuotes(data?.length || 0);
+    } catch (error) {
+      console.error('Errore nel caricamento preventivi attivi:', error);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'working': return 'bg-green-100 text-green-800 border-green-200';
@@ -142,6 +163,20 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
                   title="Modifica attrezzatura"
                 >
                   <Edit size={20} />
+                </button>
+              )}
+              {currentUser && (
+                <button
+                  onClick={() => setShowQuoteRequest(true)}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors relative"
+                  title="Richiedi preventivo"
+                >
+                  <Mail size={20} />
+                  {activeQuotes > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {activeQuotes}
+                    </span>
+                  )}
                 </button>
               )}
               <button
@@ -311,6 +346,20 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
 
           {/* Footer */}
           <div className="flex items-center justify-end space-x-3 p-6 border-t border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
+            {currentUser && (
+              <button
+                onClick={() => setShowQuoteRequest(true)}
+                className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-2"
+              >
+                <Mail size={16} />
+                <span>Richiedi Preventivo</span>
+                {activeQuotes > 0 && (
+                  <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+                    {activeQuotes} attivi
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={() => setShowAttachments(true)}
               className="bg-gradient-to-r from-brand-blue to-brand-blue-light text-white px-4 py-2 rounded-lg hover:from-brand-blue-dark hover:to-brand-blue transition-all duration-200 flex items-center space-x-2"
@@ -344,6 +393,22 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({ equipmentId
           entityId={equipment.id}
           entityName={equipment.name}
           onClose={() => setShowAttachments(false)}
+        />
+      )}
+
+      {/* Quote Request Modal */}
+      {showQuoteRequest && currentUser && equipment && (
+        <QuoteRequestModal
+          entityType="equipment"
+          entityId={equipment.id}
+          entityName={equipment.name}
+          entityDescription={equipment.description}
+          farmName={equipment.farm_name}
+          currentUser={currentUser}
+          onClose={() => {
+            setShowQuoteRequest(false);
+            fetchActiveQuotes(); // Refresh active quotes count
+          }}
         />
       )}
     </>

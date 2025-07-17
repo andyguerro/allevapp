@@ -4,6 +4,10 @@ import { Plus, Edit, Trash2, Wrench, AlertTriangle, Paperclip, Calendar, Upload,
 import AttachmentsManager from './AttachmentsManager';
 import EquipmentDetailModal from './EquipmentDetailModal';
 
+interface EquipmentProps {
+  currentUser?: any;
+}
+
 interface Equipment {
   id: string;
   name: string;
@@ -26,7 +30,7 @@ interface Farm {
   name: string;
 }
 
-export default function Equipment() {
+export default function Equipment({ currentUser }: EquipmentProps) {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -769,6 +773,7 @@ export default function Equipment() {
         <EquipmentDetailModal
           equipmentId={selectedEquipmentForDetail}
           onClose={() => setSelectedEquipmentForDetail(null)}
+          currentUser={currentUser}
           onEdit={(equipment) => {
             setSelectedEquipmentForDetail(null);
             handleEdit(equipment);

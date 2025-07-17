@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, ClipboardList, User, Building, Package, Calendar, AlertTriangle, Clock, CheckCircle, Paperclip, Edit } from 'lucide-react';
+import { X, ClipboardList, User, Building, Package, Calendar, AlertTriangle, Clock, CheckCircle, Paperclip, Edit, Mail, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AttachmentsManager from './AttachmentsManager';
+import QuoteRequestModal from './QuoteRequestModal';
 
 interface ReportDetailModalProps {
   reportId: string;
   onClose: () => void;
   onEdit?: (report: any) => void;
+  currentUser?: any;
 }
 
 interface ReportDetail {
@@ -31,13 +33,16 @@ interface ReportDetail {
   created_user_name?: string;
 }
 
-const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose, onEdit }) => {
+const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose, onEdit, currentUser }) => {
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showQuoteRequest, setShowQuoteRequest] = useState(false);
+  const [activeQuotes, setActiveQuotes] = useState<number>(0);
 
   useEffect(() => {
     fetchReportDetail();
+    fetchActiveQuotes();
   }, [reportId]);
 
   const fetchReportDetail = async () => {
@@ -72,6 +77,20 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose
     }
   };
 
+  const fetchActiveQuotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('report_id', reportId)
+        .in('status', ['requested', 'received']);
+
+      if (error) throw error;
+      setActiveQuotes(data?.length || 0);
+    } catch (error) {
+      console.error('Errore nel caricamento preventivi attivi:', error);
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'bg-brand-red/20 text-brand-red border-brand-red/30';
@@ -163,6 +182,20 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose
                   title="Modifica segnalazione"
                 >
                   <Edit size={20} />
+                </button>
+              )}
+              {currentUser && (
+                <button
+                  onClick={() => setShowQuoteRequest(true)}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors relative"
+                  title="Richiedi preventivo"
+                >
+                  <Mail size={20} />
+                  {activeQuotes > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-brand-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {activeQuotes}
+                    </span>
+                  )}
                 </button>
               )}
               <button
@@ -286,6 +319,20 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose
 
           {/* Footer */}
           <div className="flex items-center justify-end space-x-3 p-6 border-t border-brand-coral/20 bg-gradient-to-r from-brand-blue/5 to-brand-coral/5">
+            {currentUser && (
+              <button
+                onClick={() => setShowQuoteRequest(true)}
+                className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-2"
+              >
+                <Mail size={16} />
+                <span>Richiedi Preventivo</span>
+                {activeQuotes > 0 && (
+                  <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+                    {activeQuotes} attivi
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={() => setShowAttachments(true)}
               className="bg-gradient-to-r from-brand-blue to-brand-blue-light text-white px-4 py-2 rounded-lg hover:from-brand-blue-dark hover:to-brand-blue transition-all duration-200 flex items-center space-x-2"
@@ -319,6 +366,22 @@ const ReportDetailModal: React.FC<ReportDetailModalProps> = ({ reportId, onClose
           entityId={report.id}
           entityName={report.title}
           onClose={() => setShowAttachments(false)}
+        />
+      )}
+
+      {/* Quote Request Modal */}
+      {showQuoteRequest && currentUser && (
+        <QuoteRequestModal
+          entityType="report"
+          entityId={report.id}
+          entityName={report.title}
+          entityDescription={report.description}
+          farmName={report.farm_name}
+          currentUser={currentUser}
+          onClose={() => {
+            setShowQuoteRequest(false);
+            fetchActiveQuotes(); // Refresh active quotes count
+          }}
         />
       )}
     </>
