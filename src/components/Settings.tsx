@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Users, Building, Truck, Mail, Plus, Edit2, Trash2, Eye, EyeOff, Save, X, Tag, Palette, FileText, Calendar, Send, CheckCircle, AlertCircle, Database, HelpCircle, UserPlus } from 'lucide-react';
+import { Users, Building, Truck, Settings as SettingsIcon, Plus, Edit2, Trash2, Mail, Save, X, Tag, Palette, Eye, EyeOff, AlertCircle, CheckCircle, Send, Database, FileText, Calendar, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Microsoft365SetupGuide from './Microsoft365SetupGuide';
 import StorageDiagnostics from './StorageDiagnostics';
@@ -95,6 +95,12 @@ const Settings: React.FC = () => {
     color: '#6b7280',
     icon: 'folder'
   });
+
+  // Technician management states
+  const [showTechnicianModal, setShowTechnicianModal] = useState(false);
+  const [selectedFarmForTechnicians, setSelectedFarmForTechnicians] = useState<Farm | null>(null);
+  const [farmTechnicians, setFarmTechnicians] = useState<{[farmId: string]: User[]}>({});
+  const [availableTechnicians, setAvailableTechnicians] = useState<User[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -561,6 +567,91 @@ const Settings: React.FC = () => {
     setShowEditCategoryModal(false);
   };
 
+  // Technician management functions
+  const handleManageTechnicians = async (farm: Farm) => {
+    setSelectedFarmForTechnicians(farm);
+    
+    try {
+      // Fetch farm technicians
+      const { data: farmTechData, error: farmTechError } = await supabase
+        .from('farm_technicians')
+        .select(`
+          user_id,
+          users (
+            id,
+            full_name,
+            email,
+            role
+          )
+        `)
+        .eq('farm_id', farm.id);
+
+      if (farmTechError) throw farmTechError;
+
+      const assignedTechnicians = farmTechData?.map(ft => ft.users).filter(Boolean) || [];
+      
+      // Get all technicians
+      const technicians = users.filter(user => user.role === 'technician');
+      
+      // Filter available technicians (not assigned to this farm)
+      const assignedIds = assignedTechnicians.map(t => t.id);
+      const available = technicians.filter(t => !assignedIds.includes(t.id));
+
+      setFarmTechnicians(prev => ({
+        ...prev,
+        [farm.id]: assignedTechnicians
+      }));
+      setAvailableTechnicians(available);
+      setShowTechnicianModal(true);
+    } catch (error) {
+      console.error('Errore nel caricamento tecnici:', error);
+      alert('Errore nel caricamento dei tecnici');
+    }
+  };
+
+  const handleAssignTechnician = async (farmId: string, technicianId: string) => {
+    try {
+      const { error } = await supabase
+        .from('farm_technicians')
+        .insert([{
+          farm_id: farmId,
+          user_id: technicianId
+        }]);
+
+      if (error) throw error;
+
+      // Refresh technician lists
+      if (selectedFarmForTechnicians) {
+        await handleManageTechnicians(selectedFarmForTechnicians);
+      }
+    } catch (error) {
+      console.error('Errore nell\'assegnazione tecnico:', error);
+      alert('Errore nell\'assegnazione del tecnico');
+    }
+  };
+
+  const handleRemoveTechnician = async (farmId: string, technicianId: string) => {
+    if (!confirm('Sei sicuro di voler rimuovere questo tecnico dall\'allevamento?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('farm_technicians')
+        .delete()
+        .eq('farm_id', farmId)
+        .eq('user_id', technicianId);
+
+      if (error) throw error;
+
+      // Refresh technician lists
+      if (selectedFarmForTechnicians) {
+        await handleManageTechnicians(selectedFarmForTechnicians);
+      }
+    } catch (error) {
+      console.error('Errore nella rimozione tecnico:', error);
+      alert('Errore nella rimozione del tecnico');
+    }
+  };
+
   const handleSendDailyReport = async () => {
     setSendingDailyReport(true);
     setDailyReportResult(null);
@@ -806,6 +897,13 @@ const Settings: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleManageTechnicians(farm)}
+                              className="text-brand-coral hover:text-brand-blue transition-colors"
+                              title="Gestisci tecnici"
+                            >
+                              <Users size={16} />
+                            </button>
                             <button
                               onClick={() => handleEditFarm(farm)}
                               className="text-brand-blue hover:text-brand-coral transition-colors"
@@ -1777,6 +1875,113 @@ const Settings: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Technician Management Modal */}
+      {showTechnicianModal && selectedFarmForTechnicians && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-brand-blue">
+                Gestione Tecnici - {selectedFarmForTechnicians.name}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowTechnicianModal(false);
+                  setSelectedFarmForTechnicians(null);
+                }}
+                className="p-2 text-brand-gray hover:text-brand-red transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Tecnici Assegnati */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-brand-blue mb-3">
+                Tecnici Assegnati ({farmTechnicians[selectedFarmForTechnicians.id]?.length || 0})
+              </h3>
+              {farmTechnicians[selectedFarmForTechnicians.id]?.length > 0 ? (
+                <div className="space-y-2">
+                  {farmTechnicians[selectedFarmForTechnicians.id].map(tech => (
+                    <div key={tech.id} className="flex items-center justify-between p-3 bg-brand-blue/5 rounded-lg border border-brand-blue/20">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          {tech.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium text-brand-blue">{tech.full_name}</div>
+                          <div className="text-sm text-brand-gray">{tech.email}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveTechnician(selectedFarmForTechnicians.id, tech.id)}
+                        className="p-2 text-brand-gray hover:text-brand-red transition-colors rounded-lg"
+                        title="Rimuovi tecnico"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-brand-gray bg-brand-gray/5 rounded-lg">
+                  <Users size={32} className="mx-auto mb-2 text-brand-gray/50" />
+                  <p>Nessun tecnico assegnato a questo allevamento</p>
+                </div>
+              )}
+            </div>
+
+            {/* Tecnici Disponibili */}
+            <div>
+              <h3 className="text-lg font-semibold text-brand-blue mb-3">
+                Tecnici Disponibili
+              </h3>
+              {availableTechnicians.length > 0 ? (
+                <div className="space-y-2">
+                  {availableTechnicians.map(tech => (
+                    <div key={tech.id} className="flex items-center justify-between p-3 bg-brand-coral/5 rounded-lg border border-brand-coral/20">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-brand-coral rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          {tech.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium text-brand-blue">{tech.full_name}</div>
+                          <div className="text-sm text-brand-gray">{tech.email}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleAssignTechnician(selectedFarmForTechnicians.id, tech.id)}
+                        className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-4 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-2"
+                      >
+                        <UserPlus size={16} />
+                        <span>Assegna</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-brand-gray bg-brand-gray/5 rounded-lg">
+                  <CheckCircle size={32} className="mx-auto mb-2 text-green-500" />
+                  <p>Tutti i tecnici disponibili sono già assegnati</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end mt-6 pt-4 border-t border-brand-coral/20">
+              <button
+                onClick={() => {
+                  setShowTechnicianModal(false);
+                  setSelectedFarmForTechnicians(null);
+                }}
+                className="px-6 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue-dark transition-colors"
+              >
+                Chiudi
+              </button>
+            </div>
           </div>
         </div>
       )}
