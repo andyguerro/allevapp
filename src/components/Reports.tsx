@@ -328,10 +328,11 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch farms
       let farmsQuery = supabase
         .from('farms')
-        .select('id, name');
+        .select('id, name')
+        .order('name', { ascending: true });
         
       // Filter farms by user's assigned farms if they're a technician
-      if (currentUser.role === 'technician' && userFarms.length > 0) {
+      if (currentUser?.role === 'technician' && userFarms.length > 0) {
         farmsQuery = farmsQuery.in('id', userFarms);
       }
       
@@ -343,7 +344,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch equipment
       const { data: equipmentData, error: equipmentError } = await supabase
         .from('equipment')
-        .select('id, name, farm_id');
+        .select('id, name, farm_id')
+        .order('name', { ascending: true });
 
       if (equipmentError) throw equipmentError;
       setEquipment(equipmentData);
@@ -351,7 +353,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch suppliers
       const { data: suppliersData, error: suppliersError } = await supabase
         .from('suppliers')
-        .select('id, name');
+        .select('id, name')
+        .order('name', { ascending: true });
 
       if (suppliersError) throw suppliersError;
       setSuppliers(suppliersData);
@@ -360,7 +363,8 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, full_name')
-        .eq('active', true);
+        .eq('active', true)
+        .order('full_name', { ascending: true });
 
       if (usersError) throw usersError;
       setUsers(usersData);
@@ -380,26 +384,20 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
         { value: 'medium', label: 'Media' }
       ];
 
-      const farmOptions: Option[] = farmsData
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map(farm => ({
-          value: farm.id,
-          label: farm.name
-        }));
+      const farmOptions: Option[] = farmsData.map(farm => ({
+        value: farm.id,
+        label: farm.name
+      }));
 
-      const userOptions: Option[] = usersData
-        .sort((a, b) => a.full_name.localeCompare(b.full_name))
-        .map(user => ({
-          value: user.id,
-          label: user.full_name
-        }));
+      const userOptions: Option[] = usersData.map(user => ({
+        value: user.id,
+        label: user.full_name
+      }));
 
-      const supplierOptions: Option[] = suppliersData
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map(supplier => ({
-          value: supplier.id,
-          label: supplier.name
-        }));
+      const supplierOptions: Option[] = suppliersData.map(supplier => ({
+        value: supplier.id,
+        label: supplier.name
+      }));
 
       setFilterOptions([
         {
