@@ -52,9 +52,12 @@ interface Farm {
 
 interface QuotesProps {
   currentUser: any;
+  initialFilters?: {
+    farmId?: string;
+  };
 }
 
-const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
+const Quotes: React.FC<QuotesProps> = ({ currentUser, initialFilters }) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [reports, setReports] = useState<Report[]>([]);

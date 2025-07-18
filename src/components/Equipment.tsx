@@ -14,6 +14,9 @@ interface AttachmentFile {
 interface EquipmentProps {
   currentUser?: any;
   userFarms?: string[];
+  initialFilters?: {
+    farmId?: string;
+  };
 }
 
 interface Equipment {
@@ -38,7 +41,7 @@ interface Farm {
   name: string;
 }
 
-export default function Equipment({ currentUser, userFarms = [] }: EquipmentProps) {
+export default function Equipment({ currentUser, userFarms = [], initialFilters }: EquipmentProps) {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
   const [loading, setLoading] = useState(true);

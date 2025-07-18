@@ -48,10 +48,11 @@ interface DocumentsManagementProps {
   userFarms?: string[];
   initialFilters?: {
     farmId?: string;
+    editDocumentId?: string;
   };
 }
 
-const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, userFarms = [] }) => {
+const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, userFarms = [], initialFilters }) => {
   const [documents, setDocuments] = useState<FarmDocument[]>([]);
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [farms, setFarms] = useState<Farm[]>([]);
