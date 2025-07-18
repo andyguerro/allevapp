@@ -34,6 +34,11 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
   const activeFiltersCount = Object.values(selectedFilters)
     .reduce((count, options) => count + options.length, 0);
 
+  // Sort filter options alphabetically
+  const sortedFilters = filters.map(filter => ({
+    ...filter,
+    options: [...filter.options].sort((a, b) => a.label.localeCompare(b.label))
+  }));
   return (
     <div className="bg-white rounded-xl shadow-lg border border-brand-coral/20 p-3 sm:p-4 md:p-6">
       <div className="flex flex-col space-y-4">
@@ -79,7 +84,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = ({
         {/* Expanded Filters */}
         {expanded && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 pt-2">
-            {filters.map((filter) => (
+            {sortedFilters.map((filter) => (
               <div key={filter.id} className="space-y-2">
                 <label className="block text-xs sm:text-sm font-medium text-brand-blue">
                   {filter.label}
