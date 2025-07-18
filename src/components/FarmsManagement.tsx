@@ -473,49 +473,6 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                 </div>
               )}
 
-              {/* Tecnici Assegnati */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-gray-700">Tecnici Assegnati:</span>
-                  <button
-                    onClick={() => handleManageTechnicians(farm)}
-                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                  >
-                    <UserPlus size={12} />
-                    <span>Gestisci</span>
-                  </button>
-                </div>
-                <div className="space-y-1">
-                  {farmTechnicians[farm.id]?.length > 0 ? (
-                    farmTechnicians[farm.id].map(tech => (
-                      <div key={tech.id} className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
-                        {tech.full_name}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-gray-500 italic">Nessun tecnico assegnato</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Azioni */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => handleEditFarm(farm)}
-                  className="flex-1 text-xs flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
-                >
-                  <Edit size={12} />
-                  <span>Modifica</span>
-                </button>
-                <button
-                  onClick={() => handleManageTechnicians(farm)}
-                  className="flex-1 text-xs flex items-center justify-center gap-1 text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
-                >
-                  <Users size={12} />
-                  <span>Tecnici</span>
-                </button>
-              </div>
-
               {/* Fetch and display facilities count */}
               <div className="mt-3">
                 <button
