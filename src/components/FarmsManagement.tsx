@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle, Wrench } from 'lucide-react';
+import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle, Wrench, UserPlus, X, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Farm {
@@ -52,9 +52,19 @@ interface FarmsManagementProps {
   userFarms?: string[];
 }
 
+interface User {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  active: boolean;
+}
+
 export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsManagementProps) {
   const [farms, setFarms] = useState<Farm[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [farmTechnicians, setFarmTechnicians] = useState<{[key: string]: User[]}>({});
   const [activeTab, setActiveTab] = useState('reports');
   const [reports, setReports] = useState<Report[]>([]);
   const [facilities, setFacilities] = useState<any[]>([]);
@@ -63,8 +73,16 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewFarmModal, setShowNewFarmModal] = useState(false);
+  const [showEditFarmModal, setShowEditFarmModal] = useState(false);
+  const [showTechniciansModal, setShowTechniciansModal] = useState(false);
+  const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
   const [farmsWithUrgentReports, setFarmsWithUrgentReports] = useState<Set<string>>(new Set());
   const [newFarmData, setNewFarmData] = useState({
+    name: '',
+    address: '',
+    company: 'Zoogamma Spa'
+  });
+  const [editFarmData, setEditFarmData] = useState({
     name: '',
     address: '',
     company: 'Zoogamma Spa'
@@ -72,6 +90,7 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
 
   useEffect(() => {
     fetchFarms();
+    fetchUsers();
     fetchUrgentReports();
   }, []);
 
@@ -95,6 +114,49 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
       console.error('Errore nel caricamento allevamenti:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, role, active')
+        .eq('active', true)
+        .eq('role', 'technician')
+        .order('full_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Errore nel caricamento utenti:', error);
+    }
+  };
+
+  const fetchFarmTechnicians = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('farm_technicians')
+        .select(`
+          farm_id,
+          users(id, full_name, email, role, active)
+        `);
+
+      if (error) throw error;
+
+      const techniciansByFarm: {[key: string]: User[]} = {};
+      data?.forEach(item => {
+        if (!techniciansByFarm[item.farm_id]) {
+          techniciansByFarm[item.farm_id] = [];
+        }
+        if (item.users) {
+          techniciansByFarm[item.farm_id].push(item.users as User);
+        }
+      });
+
+      setFarmTechnicians(techniciansByFarm);
+    } catch (error) {
+      console.error('Errore nel caricamento tecnici allevamenti:', error);
     }
   };
 
@@ -179,6 +241,7 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
     setSelectedFarm(farm);
     setActiveTab('reports');
     fetchFarmData(farm.id);
+    fetchFarmTechnicians();
   };
 
   const handleCreateFarm = async (e: React.FormEvent) => {
@@ -196,6 +259,87 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
     } catch (error) {
       console.error('Errore nella creazione allevamento:', error);
       alert('Errore nella creazione dell\'allevamento');
+    }
+  };
+
+  const handleEditFarm = (farm: Farm) => {
+    setEditingFarm(farm);
+    setEditFarmData({
+      name: farm.name,
+      address: farm.address || '',
+      company: farm.company
+    });
+    setShowEditFarmModal(true);
+  };
+
+  const handleUpdateFarm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFarm) return;
+
+    try {
+      const { error } = await supabase
+        .from('farms')
+        .update(editFarmData)
+        .eq('id', editingFarm.id);
+
+      if (error) throw error;
+
+      setShowEditFarmModal(false);
+      setEditingFarm(null);
+      setEditFarmData({ name: '', address: '', company: 'Zoogamma Spa' });
+      
+      // Aggiorna la farm selezionata se è quella che stiamo modificando
+      if (selectedFarm && selectedFarm.id === editingFarm.id) {
+        setSelectedFarm({ ...editingFarm, ...editFarmData });
+      }
+      
+      fetchFarms();
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento allevamento:', error);
+      alert('Errore nell\'aggiornamento dell\'allevamento');
+    }
+  };
+
+  const handleManageTechnicians = (farm: Farm) => {
+    setSelectedFarm(farm);
+    setShowTechniciansModal(true);
+    fetchFarmTechnicians();
+  };
+
+  const handleAssignTechnician = async (userId: string) => {
+    if (!selectedFarm) return;
+
+    try {
+      const { error } = await supabase
+        .from('farm_technicians')
+        .insert({
+          farm_id: selectedFarm.id,
+          user_id: userId
+        });
+
+      if (error) throw error;
+      fetchFarmTechnicians();
+    } catch (error) {
+      console.error('Errore nell\'assegnazione tecnico:', error);
+      alert('Errore nell\'assegnazione del tecnico');
+    }
+  };
+
+  const handleRemoveTechnician = async (userId: string) => {
+    if (!selectedFarm) return;
+
+    try {
+      const { error } = await supabase
+        .from('farm_technicians')
+        .delete()
+        .eq('farm_id', selectedFarm.id)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      fetchFarmTechnicians();
+    } catch (error) {
+      console.error('Errore nella rimozione tecnico:', error);
+      alert('Errore nella rimozione del tecnico');
     }
   };
 
@@ -329,6 +473,49 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                 </div>
               )}
 
+              {/* Tecnici Assegnati */}
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-700">Tecnici Assegnati:</span>
+                  <button
+                    onClick={() => handleManageTechnicians(farm)}
+                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <UserPlus size={12} />
+                    <span>Gestisci</span>
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {farmTechnicians[farm.id]?.length > 0 ? (
+                    farmTechnicians[farm.id].map(tech => (
+                      <div key={tech.id} className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
+                        {tech.full_name}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-xs text-gray-500 italic">Nessun tecnico assegnato</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Azioni */}
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => handleEditFarm(farm)}
+                  className="flex-1 text-xs flex items-center justify-center gap-1 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                >
+                  <Edit size={12} />
+                  <span>Modifica</span>
+                </button>
+                <button
+                  onClick={() => handleManageTechnicians(farm)}
+                  className="flex-1 text-xs flex items-center justify-center gap-1 text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 px-2 py-1 rounded transition-colors"
+                >
+                  <Users size={12} />
+                  <span>Tecnici</span>
+                </button>
+              </div>
+
               {/* Fetch and display facilities count */}
               <div className="mt-3">
                 <button
@@ -438,6 +625,159 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Modifica Allevamento */}
+        {showEditFarmModal && editingFarm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Modifica Allevamento</h2>
+              <form onSubmit={handleUpdateFarm} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nome Allevamento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFarmData.name}
+                    onChange={(e) => setEditFarmData({ ...editFarmData, name: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Indirizzo
+                  </label>
+                  <input
+                    type="text"
+                    value={editFarmData.address}
+                    onChange={(e) => setEditFarmData({ ...editFarmData, address: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Azienda *
+                  </label>
+                  <select
+                    required
+                    value={editFarmData.company}
+                    onChange={(e) => setEditFarmData({ ...editFarmData, company: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Zoogamma Spa">Zoogamma Spa</option>
+                    <option value="So. Agr. Zooagri Srl">So. Agr. Zooagri Srl</option>
+                    <option value="Soc. Agr. Zooallevamenti Srl">Soc. Agr. Zooallevamenti Srl</option>
+                  </select>
+                </div>
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditFarmModal(false);
+                      setEditingFarm(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                  >
+                    <Save size={16} />
+                    Salva Modifiche
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Gestione Tecnici */}
+        {showTechniciansModal && selectedFarm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">Gestione Tecnici - {selectedFarm.name}</h2>
+                <button
+                  onClick={() => setShowTechniciansModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Tecnici Assegnati */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Tecnici Assegnati</h3>
+                {farmTechnicians[selectedFarm.id]?.length > 0 ? (
+                  <div className="space-y-2">
+                    {farmTechnicians[selectedFarm.id].map(tech => (
+                      <div key={tech.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{tech.full_name}</div>
+                          <div className="text-sm text-gray-600">{tech.email}</div>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveTechnician(tech.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Rimuovi tecnico"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic">Nessun tecnico assegnato</div>
+                )}
+              </div>
+
+              {/* Tecnici Disponibili */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Tecnici Disponibili</h3>
+                {users.filter(user => 
+                  !farmTechnicians[selectedFarm.id]?.some(tech => tech.id === user.id)
+                ).length > 0 ? (
+                  <div className="space-y-2">
+                    {users.filter(user => 
+                      !farmTechnicians[selectedFarm.id]?.some(tech => tech.id === user.id)
+                    ).map(user => (
+                      <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <div className="font-medium">{user.full_name}</div>
+                          <div className="text-sm text-gray-600">{user.email}</div>
+                        </div>
+                        <button
+                          onClick={() => handleAssignTechnician(user.id)}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 flex items-center gap-1"
+                        >
+                          <UserPlus size={14} />
+                          Assegna
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 italic">Tutti i tecnici sono già assegnati</div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowTechniciansModal(false)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Chiudi
+                </button>
+              </div>
             </div>
           </div>
         )}
