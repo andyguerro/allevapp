@@ -29,6 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, curr
     { id: 'projects', label: 'Progetti', icon: FolderOpen, roles: ['admin', 'manager'] },
     { id: 'quotes', label: 'Preventivi', icon: FileText, roles: ['admin', 'manager'] },
     { id: 'orders', label: 'Ordini', icon: ShoppingCart, roles: ['admin', 'manager'] },
+    { id: 'documents', label: 'Documenti', icon: FileText, roles: ['admin', 'manager', 'technician'] },
     { id: 'maintenance', label: 'Calendario', icon: Calendar, roles: ['admin', 'manager'] },
     { id: 'settings', label: 'Impostazioni', icon: Settings, roles: ['admin'] },
   ];

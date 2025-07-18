@@ -12,6 +12,7 @@ import Projects from './components/Projects';
 import MaintenanceCalendar from './components/MaintenanceCalendar';
 import FacilitiesManagement from './components/FacilitiesManagement';
 import Settings from './components/Settings';
+import DocumentsManagement from './components/DocumentsManagement';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -116,6 +117,8 @@ const App: React.FC = () => {
         return <MaintenanceCalendar />;
       case 'facilities':
         return <FacilitiesManagement currentUser={currentUser} userFarms={userFarms} />;
+      case 'documents':
+        return <DocumentsManagement currentUser={currentUser} userFarms={userFarms} />;
       case 'settings':
         return <Settings />;
       default:
