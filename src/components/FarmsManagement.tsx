@@ -47,6 +47,23 @@ interface Project {
   users?: { full_name: string };
 }
 
+interface FarmDocument {
+  id: string;
+  title: string;
+  description?: string;
+  file_name: string;
+  file_size?: number;
+  mime_type?: string;
+  document_date?: string;
+  expiry_date?: string;
+  tags?: string[];
+  is_important: boolean;
+  created_at: string;
+  category_name?: string;
+  category_color?: string;
+  created_user_name?: string;
+}
+
 interface FarmsManagementProps {
   onNavigate: (path: string) => void;
   userFarms?: string[];
@@ -71,6 +88,7 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [documents, setDocuments] = useState<FarmDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewFarmModal, setShowNewFarmModal] = useState(false);
   const [showEditFarmModal, setShowEditFarmModal] = useState(false);
@@ -228,10 +246,31 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
         .eq('farm_id', farmId)
         .order('created_at', { ascending: false });
 
+      // Fetch documents
+      const { data: documentsData } = await supabase
+        .from('farm_documents')
+        .select(`
+          *,
+          document_categories(name, color),
+          users!farm_documents_created_by_fkey(full_name)
+        `)
+        .eq('farm_id', farmId)
+        .order('created_at', { ascending: false });
+
       setReports(reportsData || []);
       setEquipment(equipmentData || []);
       setQuotes(quotesData || []);
       setProjects(projectsData || []);
+      
+      // Transform documents data
+      const transformedDocuments = documentsData?.map(doc => ({
+        ...doc,
+        category_name: doc.document_categories?.name,
+        category_color: doc.document_categories?.color,
+        created_user_name: doc.users?.full_name
+      })) || [];
+      
+      setDocuments(transformedDocuments);
     } catch (error) {
       console.error('Errore nel caricamento dati allevamento:', error);
     }
@@ -825,6 +864,19 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
               </p>
             </div>
             <FolderOpen className="w-8 h-8 text-purple-600" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg border border-brand-coral/20 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-brand-gray">Documenti</p>
+              <p className="text-2xl font-bold text-brand-coral">{documents.length}</p>
+              <p className="text-xs text-gray-500">
+                {documents.filter(d => d.is_important).length} importanti
+              </p>
+            </div>
+            <FileText className="w-8 h-8 text-brand-coral" />
           </div>
         </div>
       </div>
