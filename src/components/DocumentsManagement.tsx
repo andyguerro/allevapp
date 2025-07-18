@@ -594,13 +594,6 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => handleEditDocument(document)}
-                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
-                  title="Modifica documento"
-                >
-                  <Edit size={16} />
-                </button>
-                <button
                   onClick={() => downloadDocument(document.file_path, document.file_name)}
                   className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
                   title="Scarica documento"
@@ -831,6 +824,157 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
                       <span>Carica Documento</span>
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Document Modal */}
+      {showEditModal && editingDocument && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold text-brand-blue mb-4">Modifica Documento</h2>
+            
+            <form onSubmit={handleUpdateDocument} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  File Originale
+                </label>
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border">
+                  <div className="text-2xl">
+                    {getFileIcon(editingDocument.mime_type)}
+                  </div>
+                  <div>
+                    <p className="font-medium text-brand-blue">{editingDocument.file_name}</p>
+                    <p className="text-sm text-brand-gray">{formatFileSize(editingDocument.file_size)}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-brand-gray mt-1">
+                  Il file non può essere modificato. Per cambiare il file, elimina questo documento e caricane uno nuovo.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Titolo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editData.title}
+                  onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Allevamento
+                </label>
+                <div className="px-3 py-2 bg-gray-50 border border-brand-gray/30 rounded-lg text-brand-gray">
+                  {editingDocument.farm_name}
+                </div>
+                <p className="text-xs text-brand-gray mt-1">L'allevamento non può essere modificato</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Categoria
+                </label>
+                <select
+                  value={editData.category_id}
+                  onChange={(e) => setEditData({ ...editData, category_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="">Nessuna categoria</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Descrizione
+                </label>
+                <textarea
+                  rows={3}
+                  value={editData.description}
+                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Data Documento
+                  </label>
+                  <input
+                    type="date"
+                    value={editData.document_date}
+                    onChange={(e) => setEditData({ ...editData, document_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-brand-blue mb-2">
+                    Data Scadenza
+                  </label>
+                  <input
+                    type="date"
+                    value={editData.expiry_date}
+                    onChange={(e) => setEditData({ ...editData, expiry_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-brand-blue mb-2">
+                  Tag (separati da virgola)
+                </label>
+                <input
+                  type="text"
+                  value={editData.tags}
+                  onChange={(e) => setEditData({ ...editData, tags: e.target.value })}
+                  placeholder="es: contratto, 2025, importante"
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="edit_is_important"
+                  checked={editData.is_important}
+                  onChange={(e) => setEditData({ ...editData, is_important: e.target.checked })}
+                  className="h-4 w-4 text-brand-red focus:ring-brand-red border-brand-gray/30 rounded"
+                />
+                <label htmlFor="edit_is_important" className="text-sm font-medium text-brand-blue">
+                  Documento importante
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetEditForm}
+                  className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-brand-coral to-brand-coral-light text-white px-6 py-2 rounded-lg hover:from-brand-coral-light hover:to-brand-coral transition-all duration-200 flex items-center space-x-2"
+                >
+                  <Edit size={16} />
+                  <span>Aggiorna Documento</span>
                 </button>
               </div>
             </form>
