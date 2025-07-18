@@ -104,11 +104,11 @@ const App: React.FC = () => {
       case 'reports':
         return <Reports initialFilters={pageFilters} currentUser={currentUser} userFarms={userFarms} />;
       case 'equipment':
-        return <Equipment currentUser={currentUser} userFarms={userFarms} />;
+        return <Equipment currentUser={currentUser} userFarms={userFarms} initialFilters={pageFilters} />;
       case 'projects':
         return <Projects initialFilters={pageFilters} />;
       case 'quotes':
-        return <Quotes currentUser={currentUser} />;
+        return <Quotes currentUser={currentUser} initialFilters={pageFilters} />;
       case 'orders':
         return <Orders />;
       case 'farms':
@@ -116,9 +116,9 @@ const App: React.FC = () => {
       case 'maintenance':
         return <MaintenanceCalendar />;
       case 'facilities':
-        return <FacilitiesManagement currentUser={currentUser} userFarms={userFarms} />;
+        return <FacilitiesManagement currentUser={currentUser} userFarms={userFarms} initialFilters={pageFilters} />;
       case 'documents':
-        return <DocumentsManagement currentUser={currentUser} userFarms={userFarms} />;
+        return <DocumentsManagement currentUser={currentUser} userFarms={userFarms} initialFilters={pageFilters} />;
       case 'settings':
         return <Settings />;
       default:

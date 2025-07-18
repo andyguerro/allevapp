@@ -827,19 +827,6 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
             <FolderOpen className="w-8 h-8 text-purple-600" />
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Documenti</p>
-              <p className="text-2xl font-bold text-indigo-600">{farmDocuments.length}</p>
-              <p className="text-xs text-gray-500">
-                {farmDocuments.filter(d => d.is_important).length} importanti
-              </p>
-            </div>
-            <FileText className="w-8 h-8 text-indigo-600" />
-          </div>
-        </div>
       </div>
 
       {/* Tabs */}

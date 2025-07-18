@@ -46,6 +46,9 @@ interface Farm {
 interface DocumentsManagementProps {
   currentUser?: any;
   userFarms?: string[];
+  initialFilters?: {
+    farmId?: string;
+  };
 }
 
 const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, userFarms = [] }) => {
@@ -982,3 +985,5 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
 };
 
 export default DocumentsManagement;
+
+export default DocumentsManagement

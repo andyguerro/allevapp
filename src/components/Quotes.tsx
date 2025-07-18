@@ -92,6 +92,19 @@ const Quotes: React.FC<QuotesProps> = ({ currentUser }) => {
     fetchData();
   }, []);
 
+  // Apply initial farm filter when component mounts
+  useEffect(() => {
+    if (initialFilters?.farmId && farms.length > 0) {
+      const farm = farms.find(f => f.id === initialFilters.farmId);
+      if (farm) {
+        setSelectedFilters(prev => ({
+          ...prev,
+          farm: [{ value: farm.id, label: farm.name }]
+        }));
+      }
+    }
+  }, [initialFilters?.farmId, farms]);
+
   const fetchData = async () => {
     try {
       // Fetch quotes with joined data

@@ -66,6 +66,16 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
     fetchFarms();
   }, []);
 
+  // Apply initial farm filter when component mounts
+  useEffect(() => {
+    if (initialFilters?.farmId && farms.length > 0) {
+      const farm = farms.find(f => f.id === initialFilters.farmId);
+      if (farm) {
+        setSearchTerm(farm.name);
+      }
+    }
+  }, [initialFilters?.farmId, farms]);
+
   const fetchEquipment = async () => {
     try {
       let query = supabase
