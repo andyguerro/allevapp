@@ -1768,10 +1768,10 @@ const Settings: React.FC = () => {
                   onChange={(e) => setCategoryFormData({ ...categoryFormData, icon: e.target.value })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="certificate">🏆 Certificato</option>
                   <option value="folder">📁 Cartella</option>
-                  <option value="document">📄 Documento</option>
                   <option value="image">🖼️ Immagine</option>
+                  <option value="document">📄 Documento</option>
+                  <option value="certificate">🏆 Certificato</option>
                   <option value="manual">📖 Manuale</option>
                   <option value="photo">📷 Foto</option>
                   <option value="video">🎥 Video</option>
@@ -1850,12 +1850,12 @@ const Settings: React.FC = () => {
                 >
                   <option value="certificate">🏆 Certificato</option>
                   <option value="folder">📁 Cartella</option>
-                  <option value="document">📄 Documento</option>
+                  <option value="document">📋 Documento</option>
+                  <option value="file">📄 File</option>
+                  <option value="photo">📷 Foto</option>
                   <option value="image">🖼️ Immagine</option>
                   <option value="manual">📖 Manuale</option>
-                  <option value="photo">📷 Foto</option>
-                  <option value="video">🎥 Video</option>
-                  <option value="audio">🎵 Audio</option>
+                  <option value="other">📎 Altro</option>
                 </select>
               </div>
 

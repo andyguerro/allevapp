@@ -540,8 +540,8 @@ export default function Equipment({ currentUser, userFarms = [] }: EquipmentProp
               >
                 <option value="working">Funzionante</option>
                 <option value="not_working">Non Funzionante</option>
-                <option value="regenerated">Rigenerata</option>
                 <option value="repaired">Riparata</option>
+                <option value="regenerated">Rigenerata</option>
               </select>
             </div>
 

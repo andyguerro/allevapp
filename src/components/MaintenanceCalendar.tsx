@@ -359,10 +359,10 @@ const MaintenanceCalendar: React.FC = () => {
               onChange={(e) => setFilterType(e.target.value as any)}
               className="px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
             >
+             <option value="due">In scadenza (7 giorni)</option>
+             <option value="overdue">Scadute</option>
               <option value="all">Tutto</option>
               <option value="equipment">Attrezzature</option>
-              <option value="facility">Impianti</option>
-              <option value="quotes">Preventivi</option>
             </select>
           </div>
           <select

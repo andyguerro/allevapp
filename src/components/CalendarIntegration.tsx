@@ -318,12 +318,12 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
                   onChange={(e) => setFormData({ ...formData, selectedUser: e.target.value })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="">Seleziona un utente (opzionale)</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.full_name} ({user.role === 'admin' ? 'Amministratore' : user.role === 'manager' ? 'Manager' : 'Tecnico'})
-                    </option>
-                  ))}
+                 <option value={1440}>1 giorno</option>
+                 <option value={120}>2 ore</option>
+                 <option value={60}>1 ora</option>
+                 <option value={30}>30 minuti</option>
+                 <option value={15}>15 minuti</option>
+                 <option value={5}>5 minuti</option>
                 </select>
               )}
               <p className="text-xs text-brand-gray mt-1">
