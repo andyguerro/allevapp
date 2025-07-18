@@ -1382,13 +1382,6 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                           >
                             <Trash2 size={12} />
                           </button>
-                        Vedi tutti i {documents.length} documenti →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           )}
         </div>
       </div>
