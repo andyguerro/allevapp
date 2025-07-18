@@ -368,16 +368,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Prepare filter options
       const statusOptions: Option[] = [
         { value: 'open', label: 'Aperta' },
+        { value: 'closed', label: 'Chiusa' },
         { value: 'in_progress', label: 'In Corso' },
-        { value: 'resolved', label: 'Risolta' },
-        { value: 'closed', label: 'Chiusa' }
+        { value: 'resolved', label: 'Risolta' }
       ];
 
       const urgencyOptions: Option[] = [
-        { value: 'low', label: 'Bassa' },
-        { value: 'medium', label: 'Media' },
         { value: 'high', label: 'Alta' },
-        { value: 'critical', label: 'Critica' }
+        { value: 'low', label: 'Bassa' },
+        { value: 'critical', label: 'Critica' },
+        { value: 'medium', label: 'Media' }
       ];
 
       const farmOptions: Option[] = farmsData.map(farm => ({
