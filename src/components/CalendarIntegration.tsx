@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Users, Plus, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface CalendarIntegrationProps {
   onClose: () => void;
@@ -17,8 +18,10 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
   defaultAttendees = []
 }) => {
   const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     subject: defaultTitle,
@@ -29,9 +32,31 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
     endTime: '',
     location: defaultLocation,
     attendees: defaultAttendees.join(', '),
+    selectedUser: '',
     isAllDay: false,
     reminderMinutes: 15
   });
+
+  React.useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, full_name, email, role')
+        .eq('active', true)
+        .order('full_name');
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Errore nel caricamento utenti:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +99,14 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
         .split(',')
         .map(email => email.trim())
         .filter(email => email.length > 0 && email.includes('@'));
+
+      // Add selected user to attendees if not already included
+      if (formData.selectedUser) {
+        const selectedUserData = users.find(u => u.id === formData.selectedUser);
+        if (selectedUserData && !attendeesList.includes(selectedUserData.email)) {
+          attendeesList.push(selectedUserData.email);
+        }
+      }
 
       // Call the edge function to create calendar event
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-calendar-event`, {
@@ -269,11 +302,39 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
               />
             </div>
 
-            {/* Attendees */}
+            {/* User Selection */}
             <div>
               <label className="block text-sm font-medium text-brand-blue mb-2">
                 <Users size={16} className="inline mr-2" />
-                Partecipanti (Email)
+                Invita Utente AllevApp
+              </label>
+              {loadingUsers ? (
+                <div className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg bg-gray-50 text-gray-500">
+                  Caricamento utenti...
+                </div>
+              ) : (
+                <select
+                  value={formData.selectedUser}
+                  onChange={(e) => setFormData({ ...formData, selectedUser: e.target.value })}
+                  className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                >
+                  <option value="">Seleziona un utente (opzionale)</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.full_name} ({user.role === 'admin' ? 'Amministratore' : user.role === 'manager' ? 'Manager' : 'Tecnico'})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-brand-gray mt-1">
+                L'utente selezionato riceverà automaticamente l'invito calendario
+              </p>
+            </div>
+
+            {/* Attendees */}
+            <div>
+              <label className="block text-sm font-medium text-brand-blue mb-2">
+                Altri Partecipanti (Email)
               </label>
               <input
                 type="text"
@@ -283,7 +344,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
                 placeholder="email1@example.com, email2@example.com"
               />
               <p className="text-xs text-brand-gray mt-1">
-                Inserisci gli indirizzi email separati da virgola
+                Inserisci altri indirizzi email separati da virgola (oltre all'utente selezionato sopra)
               </p>
             </div>
 
