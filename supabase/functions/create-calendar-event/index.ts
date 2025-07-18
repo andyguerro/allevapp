@@ -137,15 +137,13 @@ serve(async (req) => {
         content: description || ''
       },
       start: isAllDay ? {
-        date: startDateTime.split('T')[0],
-        timeZone: 'Europe/Rome'
+        date: startDateTime.split('T')[0]
       } : {
         dateTime: formatDateTime(startDateTime),
         timeZone: 'Europe/Rome'
       },
       end: isAllDay ? {
-        date: endDateTime.split('T')[0],
-        timeZone: 'Europe/Rome'
+        date: endDateTime.split('T')[0]
       } : {
         dateTime: formatDateTime(endDateTime),
         timeZone: 'Europe/Rome'
