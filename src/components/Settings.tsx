@@ -67,6 +67,8 @@ const Settings: React.FC = () => {
   const [userFormData, setUserFormData] = useState({
     full_name: '',
     email: '',
+    username: '',
+    password: '',
     role: 'technician' as 'admin' | 'manager' | 'technician',
     active: true
   });
@@ -133,7 +135,7 @@ const Settings: React.FC = () => {
       // Fetch users
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, full_name, email, username, password, role, active, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
@@ -372,11 +374,95 @@ const Settings: React.FC = () => {
   };
 
   // User functions
+  const generateUsername = (fullName: string) => {
+    return fullName
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, '') // Remove special characters
+      .trim()
+      .replace(/\s+/g, '.'); // Replace spaces with dots
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const sendPasswordEmail = async (user: any) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: user.email,
+          userName: user.full_name,
+          username: user.username,
+          password: user.password,
+          role: user.role
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`✅ Credenziali inviate via email a ${user.email}`);
+      } else {
+        alert(`⚠️ Utente creato ma errore nell'invio email: ${result.message}\n\nCredenziali:\nUsername: ${user.username}\nPassword: ${user.password}`);
+      }
+    } catch (error) {
+      console.error('Errore invio email:', error);
+      alert(`⚠️ Utente creato ma errore nell'invio email.\n\nCredenziali:\nUsername: ${user.username}\nPassword: ${user.password}\n\nCopia queste credenziali e inviale manualmente.`);
+    }
+  };
+
   const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       console.log('Submitting user data:', userFormData);
+      
+      // Generate username and password for new users
+      let username = userFormData.username;
+      let password = userFormData.password;
+      
+      if (!editingUser) {
+        username = generateUsername(userFormData.full_name);
+        password = generatePassword();
+        
+        // Check if username already exists
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', username)
+          .single();
+          
+        if (existingUser) {
+          // Add number suffix if username exists
+          let counter = 1;
+          let newUsername = `${username}${counter}`;
+          
+          while (true) {
+            const { data: checkUser } = await supabase
+              .from('users')
+              .select('id')
+              .eq('username', newUsername)
+              .single();
+              
+            if (!checkUser) {
+              username = newUsername;
+              break;
+            }
+            counter++;
+            newUsername = `${username}${counter}`;
+          }
+        }
+      }
       
       if (editingUser) {
         // Update existing user
@@ -385,6 +471,8 @@ const Settings: React.FC = () => {
           .update({
             full_name: userFormData.full_name,
             email: userFormData.email,
+            username: userFormData.username,
+            password: userFormData.password,
             role: userFormData.role,
             active: userFormData.active
           })
@@ -394,17 +482,28 @@ const Settings: React.FC = () => {
         console.log('User updated successfully');
       } else {
         // Create new user
-        const { data, error } = await supabase
+        const { data: newUser, error } = await supabase
           .from('users')
           .insert({
             full_name: userFormData.full_name,
             email: userFormData.email,
+            username: username,
+            password: password,
             role: userFormData.role,
             active: userFormData.active
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
-        console.log('User created successfully:', data);
+        console.log('User created successfully:', newUser);
+        
+        // Send password email
+        await sendPasswordEmail({
+          ...newUser,
+          username,
+          password
+        });
       }
 
       await fetchData();
@@ -436,6 +535,8 @@ const Settings: React.FC = () => {
     setUserFormData({
       full_name: user.full_name,
       email: user.email,
+      username: user.username,
+      password: user.password,
       role: user.role,
       active: user.active
     });
@@ -447,6 +548,8 @@ const Settings: React.FC = () => {
     setUserFormData({
       full_name: '',
       email: '',
+      username: '',
+      password: '',
       role: 'technician',
       active: true
     });
@@ -639,6 +742,9 @@ const Settings: React.FC = () => {
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
                   <h3 className="text-lg font-semibold text-brand-blue">{user.full_name}</h3>
+                  <span className="px-2 py-1 bg-brand-gray/10 text-brand-gray rounded text-xs font-mono">
+                    {user.username}
+                  </span>
                   {!user.active && (
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-brand-gray/20 text-brand-gray border border-brand-gray/30">
                       Inattivo
@@ -661,6 +767,13 @@ const Settings: React.FC = () => {
                   className="p-2 text-brand-gray hover:text-brand-blue transition-colors"
                 >
                   <Edit size={16} />
+                </button>
+                <button
+                  onClick={() => sendPasswordEmail(user)}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                  title="Invia credenziali via email"
+                >
+                  <Mail size={16} />
                 </button>
                 <button 
                   onClick={() => handleUserDelete(user.id)}
@@ -1140,6 +1253,46 @@ const Settings: React.FC = () => {
                 />
               </div>
 
+              {editingUser && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-brand-blue mb-2">
+                      Nome Utente
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={userFormData.username}
+                      onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
+                      className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                      placeholder="nome.cognome"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-brand-blue mb-2">
+                      Password
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        required
+                        value={userFormData.password}
+                        onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setUserFormData({ ...userFormData, password: generatePassword() })}
+                        className="px-3 py-2 bg-brand-blue/10 text-brand-blue rounded-lg hover:bg-brand-blue/20 transition-colors text-sm"
+                      >
+                        Genera
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-brand-blue mb-2">
                   Ruolo
@@ -1167,6 +1320,23 @@ const Settings: React.FC = () => {
                   Utente attivo
                 </label>
               </div>
+
+              {!editingUser && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-2">
+                    <Mail size={16} className="text-blue-600 mt-0.5" />
+                    <div className="text-sm text-blue-800">
+                      <strong>Credenziali Automatiche:</strong>
+                      <p className="mt-1">
+                        Username e password verranno generati automaticamente e inviati via email all'utente.
+                      </p>
+                      <p className="mt-1 text-xs">
+                        Username: nome.cognome • Password: 8 caratteri casuali
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end space-x-3 pt-4">
                 <button

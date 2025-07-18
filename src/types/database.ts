@@ -32,6 +32,8 @@ export interface Database {
           id: string;
           full_name: string;
           email: string;
+          username: string;
+          password: string;
           role: 'admin' | 'manager' | 'technician';
           active: boolean;
           created_at: string;
@@ -41,6 +43,8 @@ export interface Database {
           id?: string;
           full_name: string;
           email: string;
+          username: string;
+          password: string;
           role?: 'admin' | 'manager' | 'technician';
           active?: boolean;
           created_at?: string;
@@ -50,6 +54,8 @@ export interface Database {
           id?: string;
           full_name?: string;
           email?: string;
+          username?: string;
+          password?: string;
           role?: 'admin' | 'manager' | 'technician';
           active?: boolean;
           created_at?: string;
