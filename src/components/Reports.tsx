@@ -328,11 +328,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch farms
       let farmsQuery = supabase
         .from('farms')
-        .select('id, name')
-        .order('name', { ascending: true });
+        .select('id, name');
         
       // Filter farms by user's assigned farms if they're a technician
-      if (currentUser?.role === 'technician' && userFarms.length > 0) {
+      if (currentUser.role === 'technician' && userFarms.length > 0) {
         farmsQuery = farmsQuery.in('id', userFarms);
       }
       
@@ -344,8 +343,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch equipment
       const { data: equipmentData, error: equipmentError } = await supabase
         .from('equipment')
-        .select('id, name, farm_id')
-        .order('name', { ascending: true });
+        .select('id, name, farm_id');
 
       if (equipmentError) throw equipmentError;
       setEquipment(equipmentData);
@@ -353,8 +351,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Fetch suppliers
       const { data: suppliersData, error: suppliersError } = await supabase
         .from('suppliers')
-        .select('id, name')
-        .order('name', { ascending: true });
+        .select('id, name');
 
       if (suppliersError) throw suppliersError;
       setSuppliers(suppliersData);
@@ -363,8 +360,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, full_name')
-        .eq('active', true)
-        .order('full_name', { ascending: true });
+        .eq('active', true);
 
       if (usersError) throw usersError;
       setUsers(usersData);
@@ -372,16 +368,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Prepare filter options
       const statusOptions: Option[] = [
         { value: 'open', label: 'Aperta' },
-        { value: 'closed', label: 'Chiusa' },
         { value: 'in_progress', label: 'In Corso' },
-        { value: 'resolved', label: 'Risolta' }
+        { value: 'resolved', label: 'Risolta' },
+        { value: 'closed', label: 'Chiusa' }
       ];
 
       const urgencyOptions: Option[] = [
-        { value: 'high', label: 'Alta' },
         { value: 'low', label: 'Bassa' },
-        { value: 'critical', label: 'Critica' },
-        { value: 'medium', label: 'Media' }
+        { value: 'medium', label: 'Media' },
+        { value: 'high', label: 'Alta' },
+        { value: 'critical', label: 'Critica' }
       ];
 
       const farmOptions: Option[] = farmsData.map(farm => ({
@@ -1061,10 +1057,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                   onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="low">Bassa</option>
-                  <option value="medium">Media</option>
                   <option value="high">Alta</option>
+                  <option value="low">Bassa</option>
                   <option value="critical">Critica</option>
+                  <option value="medium">Media</option>
                 </select>
               </div>
 
