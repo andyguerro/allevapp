@@ -29,24 +29,29 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
   onClose 
 }) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showEditLabelModal, setShowEditLabelModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [customLabel, setCustomLabel] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [editingAttachment, setEditingAttachment] = useState<Attachment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAttachments();
+    fetchCategories();
   }, [entityType, entityId]);
 
   const fetchAttachments = async () => {
     try {
       const { data, error } = await supabase
         .from('attachments')
-        .select('*')
+        .select(`
+          *,
+          attachment_categories(name, color)
+        `)
         .eq('entity_type', entityType)
         .eq('entity_id', entityId)
         .order('created_at', { ascending: false });
@@ -57,6 +62,20 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
       console.error('Errore nel caricamento allegati:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('attachment_categories')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Errore nel caricamento categorie:', error);
     }
   };
 
@@ -73,23 +92,8 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
     
     setSelectedFile(file);
     setCustomLabel(file.name.split('.')[0]); // Nome file senza estensione come default
+    setSelectedCategory('');
     setShowLabelModal(true);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
   };
 
   const uploadFile = async () => {
@@ -187,6 +191,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
           file_name: selectedFile.name,
           file_path: filePath,
           custom_label: customLabel || selectedFile.name,
+          category_id: selectedCategory || null,
           file_size: selectedFile.size,
           mime_type: selectedFile.type,
           created_by: userId
@@ -198,6 +203,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
       setShowLabelModal(false);
       setSelectedFile(null);
       setCustomLabel('');
+      setSelectedCategory('');
     } catch (error) {
       console.error('Errore nel caricamento file:', error);
       
@@ -356,79 +362,22 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
         </div>
 
         <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* Upload Area */}
-          <div
-            className={`border-2 border-dashed rounded-xl p-4 sm:p-8 text-center transition-all duration-200 ${
-              dragOver
-                ? 'border-brand-red bg-brand-red/5'
-                : 'border-brand-gray/30 hover:border-brand-coral'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            <Upload size={32} className={`mx-auto mb-3 sm:mb-4 ${dragOver ? 'text-brand-red' : 'text-brand-gray'} sm:w-12 sm:h-12`} />
-            <h3 className="text-base sm:text-lg font-medium text-brand-blue mb-2">
-              Carica un nuovo allegato
-            </h3>
-            <p className="text-sm sm:text-base text-brand-gray mb-3 sm:mb-4">
-              <span className="hidden sm:inline">Trascina i file qui o </span>Tocca per selezionare
-            </p>
-            <p className="text-xs text-brand-gray mb-3 sm:mb-4">
-              Formati supportati: immagini, PDF, documenti Word, Excel, file di testo<br/>
-              Dimensione massima: 10MB
-            </p>
-            
-            {/* Storage Status Warning */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 sm:mb-4 text-left">
-              <div className="flex items-start space-x-2">
-                <div className="text-yellow-600 mt-0.5">⚠️</div>
-                <div className="text-sm text-yellow-800">
-                  <strong>Configurazione Storage Richiesta:</strong> Se il caricamento non funziona, è necessario configurare le policy del bucket "attachments" in Supabase.
-                  <br/>
-                  <span className="text-xs">
-                    <strong>Soluzione:</strong> Vai su Supabase Dashboard → Storage → attachments → Policies → 
-                    Crea policy con target role "public\" e USING expression \"true\" per INSERT, SELECT, UPDATE, DELETE.
-                  </span>
-                </div>
-              </div>
-            </div>
-            
+          {/* Simple Upload Button */}
+          <div className="mb-6">
             <input
               type="file"
               onChange={(e) => handleFileSelect(e.target.files)}
               className="hidden"
               id="file-upload"
               accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.xls"
-              capture="environment"
-              multiple
             />
             <label
               htmlFor="file-upload"
-              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-base font-medium min-h-[48px] touch-manipulation"
+              className="bg-gradient-to-r from-brand-red to-brand-red-light text-white px-6 py-3 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl font-medium"
             >
-              <Plus size={18} className="sm:w-5 sm:h-5" />
-              <span>📱 Seleziona File</span>
+              <Plus size={20} />
+              <span>Carica Allegato</span>
             </label>
-            
-            {/* Mobile Camera Button */}
-            <div className="mt-3 sm:hidden">
-              <input
-                type="file"
-                onChange={(e) => handleFileSelect(e.target.files)}
-                className="hidden"
-                id="camera-upload"
-                accept="image/*"
-                capture="environment"
-              />
-              <label
-                htmlFor="camera-upload"
-                className="bg-gradient-to-r from-brand-blue to-brand-blue-light text-white px-6 py-3 rounded-lg hover:from-brand-blue-dark hover:to-brand-blue transition-all duration-200 cursor-pointer inline-flex items-center space-x-2 shadow-lg hover:shadow-xl text-base font-medium min-h-[48px] touch-manipulation"
-              >
-                <span>📷</span>
-                <span>Scatta Foto</span>
-              </label>
-            </div>
           </div>
 
           {/* Attachments List */}
@@ -455,10 +404,17 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-1 sm:space-x-2 mb-1">
-                            <Tag size={14} className="text-brand-coral" />
                             <h4 className="font-medium text-brand-blue truncate text-sm sm:text-base">
                               {attachment.custom_label || attachment.file_name}
                             </h4>
+                            {attachment.attachment_categories && (
+                              <span 
+                                className="px-2 py-1 rounded-full text-xs font-medium text-white"
+                                style={{ backgroundColor: attachment.attachment_categories.color }}
+                              >
+                                {attachment.attachment_categories.name}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs sm:text-sm text-brand-gray truncate">
                             {attachment.file_name}
@@ -535,6 +491,23 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                   />
                 </div>
               </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-brand-blue mb-2">
+                    Categoria (opzionale)
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
+                  >
+                    <option value="">Nessuna categoria</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
                 <button
@@ -542,6 +515,7 @@ const AttachmentsManager: React.FC<AttachmentsManagerProps> = ({
                     setShowLabelModal(false);
                     setSelectedFile(null);
                     setCustomLabel('');
+                    setSelectedCategory('');
                   }}
                   className="px-4 py-2 text-brand-gray hover:text-brand-blue transition-colors text-sm sm:text-base"
                   disabled={uploading}
