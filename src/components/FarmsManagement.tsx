@@ -1376,23 +1376,12 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                             <Edit size={12} />
                           </button>
                           <button
-                            onClick={() => downloadDocument(document.file_path, document.file_name)}
-                            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                            title="Scarica documento"
+                            onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
+                            className="p-1 text-brand-gray hover:text-brand-red transition-colors"
+                            title="Elimina documento"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Trash2 size={12} />
                           </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {documents.length > 5 && (
-                    <div className="text-center pt-4">
-                      <button
-                        onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
                         Vedi tutti i {documents.length} documenti →
                       </button>
                     </div>
