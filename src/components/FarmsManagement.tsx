@@ -1368,10 +1368,6 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                             onClick={() => onNavigate('documents', { farmId: selectedFarm.id, editDocumentId: doc.id })}
                             className="p-1 text-brand-gray hover:text-brand-coral transition-colors"
                              title="Modifica documento"
-                           >
-                             <Edit size={14} />
-                           </button>
-                          >
                             <Edit size={14} />
                           </button>
                           >
