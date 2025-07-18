@@ -1356,13 +1356,25 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                           </div>
                         </div>
                         
-                        <button
-                          onClick={() => downloadDocument(document.file_path, document.file_name)}
-                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Scarica documento"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              // Naviga alla sezione documenti con il documento selezionato per la modifica
+                              onNavigate('documents', { farmId: selectedFarm.id, editDocumentId: document.id });
+                            }}
+                            className="p-1 text-brand-gray hover:text-brand-coral transition-colors"
+                            title="Modifica documento"
+                          >
+                            <Edit size={12} />
+                          </button>
+                          <button
+                            onClick={() => downloadDocument(document.file_path, document.file_name)}
+                            className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Scarica documento"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
