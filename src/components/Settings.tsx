@@ -55,6 +55,10 @@ const Settings: React.FC = () => {
   const [showNewFarmForm, setShowNewFarmForm] = useState(false);
   const [showNewSupplierForm, setShowNewSupplierForm] = useState(false);
   const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showEditFarmModal, setShowEditFarmModal] = useState(false);
+  const [showEditSupplierModal, setShowEditSupplierModal] = useState(false);
+  const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
 
   const [newUser, setNewUser] = useState({
     full_name: '',
@@ -62,12 +66,22 @@ const Settings: React.FC = () => {
     role: 'technician' as const
   });
 
+  const [editUserData, setEditUserData] = useState({
+    full_name: '',
+    email: '',
+    role: 'technician' as const
+  });
   const [newFarm, setNewFarm] = useState({
     name: '',
     address: '',
     company: 'Zoogamma Spa'
   });
 
+  const [editFarmData, setEditFarmData] = useState({
+    name: '',
+    address: '',
+    company: 'Zoogamma Spa'
+  });
   const [newSupplier, setNewSupplier] = useState({
     name: '',
     email: '',
@@ -75,12 +89,23 @@ const Settings: React.FC = () => {
     address: ''
   });
 
+  const [editSupplierData, setEditSupplierData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
   const [newCategory, setNewCategory] = useState({
     name: '',
     color: '#6b7280',
     icon: 'folder'
   });
 
+  const [editCategoryData, setEditCategoryData] = useState({
+    name: '',
+    color: '#6b7280',
+    icon: 'folder'
+  });
   const generateUsername = (fullName: string): string => {
     return fullName.toLowerCase()
       .replace(/[àáâãäå]/g, 'a')
@@ -582,19 +607,29 @@ const Settings: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => sendPasswordEmail(user)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Invia credenziali via email"
-                      >
-                        Invia credenziali
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Modifica utente"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => sendPasswordEmail(user)}
+                          className="text-green-600 hover:text-green-900 text-xs"
+                          title="Invia credenziali via email"
+                        >
+                          📧
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Elimina utente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -712,12 +747,22 @@ const Settings: React.FC = () => {
                       {farm.company}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteFarm(farm.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditFarm(farm)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Modifica allevamento"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFarm(farm.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Elimina allevamento"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -845,12 +890,22 @@ const Settings: React.FC = () => {
                       {supplier.address || 'Non specificato'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteSupplier(supplier.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditSupplier(supplier)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Modifica fornitore"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSupplier(supplier.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Elimina fornitore"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -984,17 +1039,315 @@ const Settings: React.FC = () => {
                       {new Date(category.created_at).toLocaleDateString('it-IT')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleDeleteCategory(category.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditCategory(category)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Modifica categoria"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(category.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Elimina categoria"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+      {/* Edit User Modal */}
+      {showEditUserModal && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Modifica Utente</h2>
+            
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  value={editUserData.full_name}
+                  onChange={(e) => setEditUserData({ ...editUserData, full_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editUserData.email}
+                  onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Ruolo
+                </label>
+                <select
+                  value={editUserData.role}
+                  onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="technician">Tecnico</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Amministratore</option>
+                </select>
+              </div>
+              <div className="flex space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditUserModal(false);
+                    setEditingUser(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salva</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+          </div>
+      {/* Edit Farm Modal */}
+      {showEditFarmModal && editingFarm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Modifica Allevamento</h2>
+            
+            <form onSubmit={handleUpdateFarm} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome Allevamento
+                </label>
+                <input
+                  type="text"
+                  value={editFarmData.name}
+                  onChange={(e) => setEditFarmData({ ...editFarmData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Indirizzo
+                </label>
+                <input
+                  type="text"
+                  value={editFarmData.address}
+                  onChange={(e) => setEditFarmData({ ...editFarmData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Azienda
+                </label>
+                <select
+                  value={editFarmData.company}
+                  onChange={(e) => setEditFarmData({ ...editFarmData, company: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {companyOptions.map(company => (
+                    <option key={company} value={company}>{company}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditFarmModal(false);
+                    setEditingFarm(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salva</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+        </div>
+      {/* Edit Supplier Modal */}
+      {showEditSupplierModal && editingSupplier && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Modifica Fornitore</h2>
+            
+            <form onSubmit={handleUpdateSupplier} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome Fornitore
+                </label>
+                <input
+                  type="text"
+                  value={editSupplierData.name}
+                  onChange={(e) => setEditSupplierData({ ...editSupplierData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editSupplierData.email}
+                  onChange={(e) => setEditSupplierData({ ...editSupplierData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Telefono
+                </label>
+                <input
+                  type="tel"
+                  value={editSupplierData.phone}
+                  onChange={(e) => setEditSupplierData({ ...editSupplierData, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Indirizzo
+                </label>
+                <input
+                  type="text"
+                  value={editSupplierData.address}
+                  onChange={(e) => setEditSupplierData({ ...editSupplierData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditSupplierModal(false);
+                    setEditingSupplier(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salva</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      )}
+      {/* Edit Category Modal */}
+      {showEditCategoryModal && editingCategory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Modifica Categoria</h2>
+            
+            <form onSubmit={handleUpdateCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome Categoria
+                </label>
+                <input
+                  type="text"
+                  value={editCategoryData.name}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Colore
+                </label>
+                <div className="flex space-x-2">
+                  {colorOptions.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setEditCategoryData({ ...editCategoryData, color })}
+                      className={`w-8 h-8 rounded-full border-2 ${
+                        editCategoryData.color === color ? 'border-gray-800' : 'border-gray-300'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Icona
+                </label>
+                <select
+                  value={editCategoryData.icon}
+                  onChange={(e) => setEditCategoryData({ ...editCategoryData, icon: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="folder">Cartella</option>
+                  <option value="file-text">Documento</option>
+                  <option value="image">Immagine</option>
+                  <option value="book">Manuale</option>
+                  <option value="award">Certificato</option>
+                  <option value="receipt">Fattura</option>
+                </select>
+              </div>
+              <div className="flex space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditCategoryModal(false);
+                    setEditingCategory(null);
+                  }}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Salva</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
