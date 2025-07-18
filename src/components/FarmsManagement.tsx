@@ -1372,6 +1372,9 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                             <Edit size={14} />
                           </button>
                           >
+                            <Edit size={14} />
+                          </button>
+                          >
                             <Edit size={12} />
                           </button>
                           <button
