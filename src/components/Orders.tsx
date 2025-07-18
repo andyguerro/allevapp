@@ -120,7 +120,9 @@ const Orders: React.FC = () => {
         phone: '+39 030 9938433',
         email: 'ordini@zoogamma.it',
         color: '#E31E24',
-        logo: '/ZooG.png'
+        logo: '/ZooG.png',
+        vat: '00633870981',
+        footer: 'Società soggetta a direzione e coordinamento di Duerre S.p.A.'
       },
       'So. Agr. Zooagri Srl': {
         letterhead: 'SO. AGR. ZOOAGRI SRL',
@@ -129,6 +131,8 @@ const Orders: React.FC = () => {
         email: 'ordini@zooagri.it',
         color: '#1E3A8A',
         logo: '/ZooG.png'
+        vat: '02309000980',
+        footer: 'Società soggetta a direzione e coordinamento di Duerre S.p.A.'
       },
       'Soc. Agr. Zooallevamenti Srl': {
         letterhead: 'SOC. AGR. ZOOALLEVAMENTI SRL',
@@ -137,11 +141,14 @@ const Orders: React.FC = () => {
         email: 'ordini@zooallevamenti.it',
         color: '#059669',
         logo: '/ZooG.png'
+        vat: '02309010989',
+        footer: 'Società soggetta a direzione e coordinamento di Duerre S.p.A.'
       }
     };
 
     const template = companyTemplates[order.company as keyof typeof companyTemplates];
 
+    // Genera contenuto HTML identico al PDF
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -149,131 +156,418 @@ const Orders: React.FC = () => {
           <meta charset="utf-8">
           <title>Conferma Ordine ${order.order_number}</title>
           <style>
-            @page { size: 21cm 29.7cm; margin: 2cm; }
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; line-height: 1.5; color: #333; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${template.color}; padding-bottom: 15px; margin-bottom: 30px; }
-            .logo-container { width: 80px; }
-            .logo { max-width: 100%; height: auto; }
-            .company-details { text-align: right; }
-            .company-name { font-size: 24px; font-weight: bold; color: ${template.color}; margin-bottom: 5px; }
-            .company-info { font-size: 11px; color: #666; line-height: 1.3; }
-            .document-title { text-align: center; margin: 30px 0; }
-            .order-title { font-size: 22px; font-weight: bold; color: ${template.color}; margin: 0; text-transform: uppercase; }
-            .order-number { font-size: 18px; font-weight: bold; background: ${template.color}; color: white; padding: 8px 15px; text-align: center; margin: 15px auto 30px; display: inline-block; }
-            .section { margin-bottom: 25px; }
-            .section-title { font-size: 14px; font-weight: bold; color: ${template.color}; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 10px; text-transform: uppercase; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-            .info-item { margin-bottom: 8px; }
-            .label { font-weight: bold; color: #333; display: block; margin-bottom: 3px; }
-            .value { color: #444; }
-            .amount { font-size: 18px; font-weight: bold; color: ${template.color}; }
-            .notes-section { background-color: #f9f9f9; padding: 15px; border: 1px solid #eee; border-radius: 5px; margin-top: 20px; }
-            .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #666; text-align: center; }
-            .signature-section { margin-top: 60px; display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
-            .signature-box { text-align: center; }
-            .signature-line { border-bottom: 1px solid #333; margin-bottom: 5px; height: 40px; }
-            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+            @page { size: 21cm 29.7cm; margin: 2cm 2.5cm; }
+            * { box-sizing: border-box; }
+            body { 
+              font-family: 'Times New Roman', Times, serif; 
+              margin: 0; 
+              padding: 0;
+              line-height: 1.4;
+              color: #333;
+              background-color: #fff;
+              font-size: 11pt;
+            }
+            
+            /* Header Section */
+            .header {
+              border-bottom: 3px solid ${template.color};
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+              position: relative;
+            }
+            .header-content {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .logo-section {
+              width: 100px;
+            }
+            .logo-section img {
+              width: 80px;
+              height: auto;
+            }
+            .company-details {
+              text-align: right;
+              flex: 1;
+              margin-left: 20px;
+            }
+            .company-name {
+              font-size: 22px;
+              font-weight: 700;
+              color: ${template.color};
+              margin-bottom: 5px;
+              text-transform: uppercase;
+            }
+            .company-info {
+              font-size: 10pt;
+              color: #666;
+              line-height: 1.3;
+            }
+            
+            /* Document Title Section */
+            .document-title-section {
+              text-align: center;
+              margin: 30px 0;
+            }
+            .document-title {
+              font-size: 24pt;
+              font-weight: bold;
+              color: ${template.color};
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              margin: 0 0 10px 0;
+            }
+            .order-number-box {
+              display: inline-block;
+              background-color: ${template.color};
+              color: white;
+              padding: 8px 20px;
+              font-size: 14pt;
+              font-weight: bold;
+              margin: 10px 0;
+            }
+            .order-date {
+              font-size: 11pt;
+              color: #666;
+              margin-top: 10px;
+            }
+            
+            /* Two Column Layout */
+            .two-column {
+              display: flex;
+              justify-content: space-between;
+              margin: 30px 0;
+              gap: 30px;
+            }
+            .column {
+              flex: 1;
+            }
+            
+            /* Section Styling */
+            .section {
+              margin-bottom: 25px;
+            }
+            .section-title {
+              font-size: 12pt;
+              font-weight: 700;
+              color: ${template.color};
+              border-bottom: 2px solid ${template.color};
+              padding-bottom: 5px;
+              margin-bottom: 15px;
+              text-transform: uppercase;
+            }
+            .info-row {
+              margin-bottom: 8px;
+              display: flex;
+            }
+            .info-label {
+              font-weight: bold;
+              width: 120px;
+              color: #333;
+            }
+            .info-value {
+              color: #666;
+              flex: 1;
+            }
+            
+            /* Order Details Box */
+            .order-details-box {
+              border: 2px solid ${template.color};
+              margin: 25px 0;
+              background-color: #fafafa;
+            }
+            .order-details-header {
+              background-color: ${template.color};
+              color: white;
+              padding: 10px 15px;
+              font-weight: bold;
+              font-size: 12pt;
+            }
+            .order-details-content {
+              padding: 15px;
+            }
+            .order-description {
+              margin: 15px 0;
+              line-height: 1.5;
+              color: #444;
+            }
+            
+            /* Amount Section */
+            .amount-section {
+              text-align: center;
+              margin: 25px 0;
+              padding: 20px;
+              background-color: #f8f9fa;
+              border: 1px solid #ddd;
+            }
+            .amount-label {
+              font-size: 11pt;
+              color: #666;
+              margin-bottom: 5px;
+            }
+            .amount-value {
+              font-size: 20pt;
+              font-weight: 600;
+              color: ${template.color};
+            }
+            .amount-note {
+              font-size: 9pt;
+              color: #666;
+              margin-top: 5px;
+              font-style: italic;
+            }
+            
+            /* Notes Section */
+            .notes-section {
+              background-color: #f8f9fa;
+              border: 1px solid #ddd;
+              padding: 15px;
+              margin: 20px 0;
+            }
+            .notes-title {
+              font-weight: bold;
+              margin-bottom: 10px;
+              color: ${template.color};
+            }
+            
+            /* Signature Section */
+            .signature-section {
+              margin-top: 40px;
+              display: flex;
+              justify-content: space-between;
+              gap: 50px;
+            }
+            .signature-box {
+              flex: 1;
+              text-align: center;
+            }
+            .signature-line {
+              border-bottom: 1px solid #333;
+              height: 40px;
+              margin-bottom: 8px;
+            }
+            .signature-label {
+              font-weight: 700;
+              font-size: 10pt;
+              margin-bottom: 5px;
+            }
+            .signature-date {
+              font-size: 9pt;
+              color: #666;
+            }
+            
+            /* Footer */
+            .footer {
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 2px solid ${template.color};
+              font-size: 9pt;
+              color: #666;
+              text-align: center;
+            }
+            .footer-info {
+              margin-bottom: 10px;
+            }
+            
+            /* Table Styling */
+            .info-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
+            }
+            .info-table td {
+              padding: 5px 0;
+              vertical-align: top;
+            }
+            .info-table .label-col {
+              width: 120px;
+              font-weight: bold;
+              color: #333;
+            }
+            .info-table .value-col {
+              color: #666;
+            }
+            
+            /* Payment Terms Box */
+            .payment-terms {
+              background-color: #e8f4fd;
+              border: 1px solid #b3d9ff;
+              padding: 12px;
+              margin: 20px 0;
+              font-size: 10pt;
+            }
+            .payment-terms-title {
+              font-weight: bold;
+              color: ${template.color};
+              margin-bottom: 5px;
+            }
+            
+            /* Status Badge */
+            .status-badge {
+              display: inline-block;
+              padding: 5px 15px;
+              background-color: #ffc107;
+              color: #333;
+              font-weight: bold;
+              font-size: 10pt;
+              margin: 10px 0;
+            }
+            
+            /* Utilities */
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .mb-10 { margin-bottom: 10px; }
+            .mb-15 { margin-bottom: 15px; }
+            .mb-20 { margin-bottom: 20px; }
+            .mt-20 { margin-top: 20px; }
+            .bold { font-weight: bold; }
+            
+            /* Print Optimizations */
+            @media print {
+              body { font-size: 10pt; }
+              .no-print { display: none; }
+            }
           </style>
         </head>
         <body>
           <header class="header">
-            <div class="logo-container">
-              <img src="${template.logo}" alt="${template.letterhead}" class="logo">
-            </div>
-            <div class="company-details">
-              <div class="company-name">${template.letterhead}</div>
-              <div class="company-info">
-                ${template.address}<br>
-                Tel: ${template.phone}<br>
-                Email: ${template.email}<br>
-                P.IVA: 00633870981
+            <div class="header-content">
+              <div class="logo-section">
+                <img src="${template.logo}" alt="${template.letterhead}">
+              </div>
+              <div class="company-details">
+                <div class="company-name">${template.letterhead}</div>
+                <div class="company-info">
+                  ${template.address}<br>
+                  Tel: ${template.phone}<br>
+                  Email: ${template.email}<br>
+                  P.IVA: ${template.vat}
+                </div>
               </div>
             </div>
           </header>
 
-          <div class="document-title">
-            <h1 class="order-title">Conferma Ordine</h1>
-            <div class="order-number">N. ${order.order_number}</div>
-            <div class="status-badge" style="background: ${getStatusColor(order.status)}; color: white;">
+          <!-- Document Title -->
+          <div class="document-title-section">
+            <h1 class="document-title">Conferma d'Ordine</h1>
+            <div class="order-number-box">N. ${order.order_number}</div>
+            <div class="order-date">Data: ${new Date(order.order_date).toLocaleDateString('it-IT')}</div>
+            <div class="status-badge">
               ${getStatusText(order.status)}
             </div>
           </div>
 
-          <div class="info-grid">
-            <div class="section">
-              <div class="section-title">Dati Fornitore</div>
-              <div class="info-item">
-                <span class="label">Ragione Sociale:</span>
-                <span class="value">${order.supplier_name}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Email:</span>
-                <span class="value">${order.supplier_email}</span>
+          <!-- Two Column Layout -->
+          <div class="two-column">
+            <!-- Left Column - Supplier Info -->
+            <div class="column">
+              <div class="section">
+                <div class="section-title">Dati Fornitore</div>
+                <table class="info-table">
+                  <tr>
+                    <td class="label-col">Ragione Sociale:</td>
+                    <td class="value-col">${order.supplier_name}</td>
+                  </tr>
+                  <tr>
+                    <td class="label-col">Email:</td>
+                    <td class="value-col">${order.supplier_email}</td>
+                  </tr>
+                  <tr>
+                    <td class="label-col">Rif. Preventivo:</td>
+                    <td class="value-col">N° ${order.quote_id?.substring(0, 8).toUpperCase() || 'N/A'}</td>
+                  </tr>
+                </table>
               </div>
             </div>
 
-            <div class="section">
-              <div class="section-title">Dati Ordine</div>
-              <div class="info-item">
-                <span class="label">Data Ordine:</span>
-                <span class="value">${new Date(order.order_date).toLocaleDateString('it-IT')}</span>
+            <!-- Right Column - Order Info -->
+            <div class="column">
+              <div class="section">
+                <div class="section-title">Dati Ordine</div>
+                <table class="info-table">
+                  <tr>
+                    <td class="label-col">Data Ordine:</td>
+                    <td class="value-col">${new Date(order.order_date).toLocaleDateString('it-IT')}</td>
+                  </tr>
+                  ${order.delivery_date ? `
+                    <tr>
+                      <td class="label-col">Consegna Richiesta:</td>
+                      <td class="value-col">${new Date(order.delivery_date).toLocaleDateString('it-IT')}</td>
+                    </tr>
+                  ` : ''}
+                  <tr>
+                    <td class="label-col">Allevamento:</td>
+                    <td class="value-col">${order.farm_name}</td>
+                  </tr>
+                </table>
               </div>
-              ${order.delivery_date ? `
-                <div class="info-item">
-                  <span class="label">Data Consegna Richiesta:</span>
-                  <span class="value">${new Date(order.delivery_date).toLocaleDateString('it-IT')}</span>
-                </div>
-              ` : ''}
             </div>
           </div>
 
-          <div class="section">
-            <div class="section-title">Dettagli Fornitura</div>
-            <div class="info-item">
-              <span class="label">Oggetto:</span>
-              <span class="value">${order.quote_title}</span>
+          <!-- Order Details -->
+          <div class="order-details-box">
+            <div class="order-details-header">
+              OGGETTO DELL'ORDINE
             </div>
-            <div class="info-item">
-              <span class="label">Descrizione:</span>
-              <span class="value">${order.quote_description}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Allevamento:</span>
-              <span class="value">${order.farm_name}</span>
+            <div class="order-details-content">
+              <table class="info-table">
+                <tr>
+                  <td class="label-col">Oggetto:</td>
+                  <td class="value-col"><strong>${order.quote_title}</strong></td>
+                </tr>
+              </table>
+              <div class="order-description">
+                ${order.quote_description}
+              </div>
             </div>
           </div>
 
-          <div class="section">
-            <div class="section-title">Importo</div>
-            <div class="info-item">
-              <span class="label">Totale Ordine:</span>
-              <span class="amount">€ ${order.total_amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
-            </div>
+          <!-- Payment Terms -->
+          <div class="payment-terms">
+            <div class="payment-terms-title">Condizioni di Pagamento</div>
+            Bonifico Bancario a 60 giorni data fattura fine mese
+          </div>
+
+          <!-- Total Amount -->
+          <div class="amount-section">
+            <div class="amount-label">IMPORTO TOTALE ORDINE</div>
+            <div class="amount-value">€ ${order.total_amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</div>
+            <div class="amount-note">I prezzi si intendono IVA esclusa</div>
           </div>
 
           ${order.notes ? `
-            <div class="section notes-section">
-              <div class="section-title">Note</div>
-              <div class="value">${order.notes}</div>
+            <div class="notes-section">
+              <div class="notes-title">Note Aggiuntive</div>
+              <div>${order.notes}</div>
             </div>
           ` : ''}
 
+          <!-- Signatures -->
           <div class="signature-section">
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div><strong>Firma e Timbro ${template.letterhead}</strong></div>
-              <div>Data: _______________</div>
+              <div class="signature-label">Firma e Timbro</div>
+              <div class="signature-label">${template.letterhead}</div>
+              <div class="signature-date">Data: _________________</div>
             </div>
             <div class="signature-box">
               <div class="signature-line"></div>
-              <div><strong>Firma e Timbro Fornitore</strong></div>
-              <div>Data: _______________</div>
+              <div class="signature-label">Firma e Timbro</div>
+              <div class="signature-label">FORNITORE</div>
+              <div class="signature-date">Data: _________________</div>
             </div>
           </div>
 
+          <!-- Footer -->
           <div class="footer">
-            <p>Documento generato automaticamente dal sistema AllevApp - ${new Date().toLocaleDateString('it-IT')}</p>
-            <p>${template.letterhead} - ${template.address} - Tel: ${template.phone}</p>
+            <div class="footer-info">
+              <strong>${template.letterhead}</strong> - ${template.address}<br>
+              Tel: ${template.phone} - Email: ${template.email} - P.IVA: ${template.vat}
+            </div>
+            <div class="footer-info">
+              Documento generato automaticamente il ${new Date().toLocaleDateString('it-IT')} - Sistema AllevApp
+            </div>
           </div>
         </body>
       </html>
