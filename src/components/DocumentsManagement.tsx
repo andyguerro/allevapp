@@ -985,5 +985,3 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
 };
 
 export default DocumentsManagement;
-
-export default DocumentsManagement
