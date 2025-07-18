@@ -380,20 +380,26 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
         { value: 'medium', label: 'Media' }
       ];
 
-      const farmOptions: Option[] = farmsData.map(farm => ({
-        value: farm.id,
-        label: farm.name
-      }));
+      const farmOptions: Option[] = farmsData
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(farm => ({
+          value: farm.id,
+          label: farm.name
+        }));
 
-      const userOptions: Option[] = usersData.map(user => ({
-        value: user.id,
-        label: user.full_name
-      }));
+      const userOptions: Option[] = usersData
+        .sort((a, b) => a.full_name.localeCompare(b.full_name))
+        .map(user => ({
+          value: user.id,
+          label: user.full_name
+        }));
 
-      const supplierOptions: Option[] = suppliersData.map(supplier => ({
-        value: supplier.id,
-        label: supplier.name
-      }));
+      const supplierOptions: Option[] = suppliersData
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(supplier => ({
+          value: supplier.id,
+          label: supplier.name
+        }));
 
       setFilterOptions([
         {
