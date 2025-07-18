@@ -368,16 +368,16 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
       // Prepare filter options
       const statusOptions: Option[] = [
         { value: 'open', label: 'Aperta' },
+        { value: 'closed', label: 'Chiusa' },
         { value: 'in_progress', label: 'In Corso' },
-        { value: 'resolved', label: 'Risolta' },
-        { value: 'closed', label: 'Chiusa' }
+        { value: 'resolved', label: 'Risolta' }
       ];
 
       const urgencyOptions: Option[] = [
-        { value: 'low', label: 'Bassa' },
-        { value: 'medium', label: 'Media' },
         { value: 'high', label: 'Alta' },
-        { value: 'critical', label: 'Critica' }
+        { value: 'low', label: 'Bassa' },
+        { value: 'critical', label: 'Critica' },
+        { value: 'medium', label: 'Media' }
       ];
 
       const farmOptions: Option[] = farmsData.map(farm => ({
@@ -1057,6 +1057,7 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                   onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
+                  <option value="">Seleziona urgenza</option>
                   <option value="high">Alta</option>
                   <option value="low">Bassa</option>
                   <option value="critical">Critica</option>
