@@ -64,6 +64,8 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<DocumentCategory | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<FarmDocument | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -74,6 +76,16 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
     title: '',
     description: '',
     farm_id: '',
+    category_id: '',
+    document_date: '',
+    expiry_date: '',
+    tags: '',
+    is_important: false
+  });
+
+  const [editData, setEditData] = useState({
+    title: '',
+    description: '',
     category_id: '',
     document_date: '',
     expiry_date: '',
