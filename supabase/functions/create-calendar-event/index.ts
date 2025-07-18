@@ -46,7 +46,13 @@ serve(async (req) => {
         JSON.stringify({ 
           success: false, 
           error: 'Microsoft 365 credentials not configured',
-          message: 'Configurazione Microsoft 365 non completata'
+          message: 'Configurazione Microsoft 365 non completata. Vai su Impostazioni → Configura Microsoft 365 per completare la configurazione.',
+          missingVars: {
+            tenantId: !tenantId,
+            clientId: !clientId,
+            clientSecret: !clientSecret,
+            senderEmail: !senderEmail
+          }
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,6 +60,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log('Attempting to get Microsoft Graph access token...')
 
     // Get Microsoft Graph access token
     const tokenResponse = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
@@ -71,11 +79,23 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text()
+      console.error('Token request failed:', errorText)
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: `Failed to authenticate with Microsoft 365: ${tokenResponse.status}`,
-          message: 'Errore di autenticazione Microsoft 365'
+          message: 'Errore di autenticazione Microsoft 365. Verifica le credenziali in Azure AD.',
+          details: errorText,
+          troubleshooting: {
+            step: 'Verifica Passo 2 della guida: Configurazione Autenticazione',
+            checkList: [
+              'Client Secret non scaduto',
+              'Tenant ID corretto',
+              'Client ID corretto',
+              'Consenso amministratore concesso'
+            ]
+          }
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -87,6 +107,8 @@ serve(async (req) => {
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
 
+    console.log('Access token obtained successfully')
+
     // Prepare attendees array
     const eventAttendees = attendees.map(email => ({
       emailAddress: {
@@ -95,19 +117,37 @@ serve(async (req) => {
       }
     }))
 
+    // Format datetime strings properly
+    const formatDateTime = (dateTimeStr: string) => {
+      // Ensure the datetime string is in ISO format
+      if (!dateTimeStr.includes('T')) {
+        return `${dateTimeStr}T00:00:00.000Z`
+      }
+      if (!dateTimeStr.endsWith('Z') && !dateTimeStr.includes('+')) {
+        return `${dateTimeStr}.000Z`
+      }
+      return dateTimeStr
+    }
+
     // Create calendar event
     const eventData = {
       subject: subject,
       body: {
         contentType: 'HTML',
-        content: description
+        content: description || ''
       },
-      start: {
-        dateTime: startDateTime,
+      start: isAllDay ? {
+        date: startDateTime.split('T')[0],
+        timeZone: 'Europe/Rome'
+      } : {
+        dateTime: formatDateTime(startDateTime),
         timeZone: 'Europe/Rome'
       },
-      end: {
-        dateTime: endDateTime,
+      end: isAllDay ? {
+        date: endDateTime.split('T')[0],
+        timeZone: 'Europe/Rome'
+      } : {
+        dateTime: formatDateTime(endDateTime),
         timeZone: 'Europe/Rome'
       },
       location: location ? {
@@ -119,6 +159,9 @@ serve(async (req) => {
       showAs: 'busy',
       importance: 'normal'
     }
+
+    console.log('Creating calendar event for user:', senderEmail)
+    console.log('Event data:', JSON.stringify(eventData, null, 2))
 
     // Create the event in Microsoft 365 calendar
     const calendarResponse = await fetch(`https://graph.microsoft.com/v1.0/users/${senderEmail}/events`, {
@@ -132,12 +175,50 @@ serve(async (req) => {
 
     if (!calendarResponse.ok) {
       const errorText = await calendarResponse.text()
+      console.error('Calendar creation failed:', errorText)
+      
+      let troubleshootingMessage = ''
+      let checkList: string[] = []
+      
+      if (calendarResponse.status === 403) {
+        troubleshootingMessage = 'Errore 403: Permessi insufficienti. Verifica la configurazione Azure AD.'
+        checkList = [
+          'Permesso "Calendars.ReadWrite" aggiunto in Azure AD',
+          'Consenso amministratore concesso per tutti i permessi',
+          'Email mittente ha licenza Exchange Online',
+          'Account email mittente esistente e attivo'
+        ]
+      } else if (calendarResponse.status === 401) {
+        troubleshootingMessage = 'Errore 401: Credenziali non valide.'
+        checkList = [
+          'Client Secret non scaduto',
+          'Variabili d\'ambiente corrette in Supabase',
+          'Tenant ID e Client ID corrispondenti'
+        ]
+      } else if (calendarResponse.status === 404) {
+        troubleshootingMessage = 'Errore 404: Utente o calendario non trovato.'
+        checkList = [
+          'Email mittente esistente in Microsoft 365',
+          'Account ha accesso al calendario',
+          'Licenza Exchange Online attiva'
+        ]
+      }
+
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: `Failed to create calendar event: ${calendarResponse.status}`,
-          message: 'Errore nella creazione dell\'evento calendario',
-          details: errorText
+          message: troubleshootingMessage || 'Errore nella creazione dell\'evento calendario',
+          details: errorText,
+          troubleshooting: {
+            step: calendarResponse.status === 403 ? 'Verifica Passo 2: Permessi API' : 'Verifica configurazione generale',
+            checkList: checkList,
+            nextSteps: [
+              'Vai su Impostazioni → Configura Microsoft 365',
+              'Segui la guida passo-passo',
+              'Testa la configurazione al Passo 5'
+            ]
+          }
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -147,6 +228,7 @@ serve(async (req) => {
     }
 
     const eventResult = await calendarResponse.json()
+    console.log('Calendar event created successfully:', eventResult.id)
 
     return new Response(
       JSON.stringify({ 
@@ -168,7 +250,11 @@ serve(async (req) => {
       JSON.stringify({ 
         success: false, 
         error: error.message,
-        message: 'Errore imprevisto nella creazione dell\'evento'
+        message: 'Errore imprevisto nella creazione dell\'evento',
+        troubleshooting: {
+          step: 'Verifica configurazione Microsoft 365',
+          suggestion: 'Vai su Impostazioni → Configura Microsoft 365 per una guida completa'
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
