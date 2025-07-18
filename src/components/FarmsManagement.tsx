@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle, Wrench, UserPlus, X, Save } from 'lucide-react';
+import { Building, ClipboardList, Package, FileText, AlertTriangle, Clock, CheckCircle, Plus, Eye, Edit, MapPin, Users, TrendingUp, Send, DollarSign, FolderOpen, AlertCircle, Wrench, UserPlus, X, Save, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Farm {
@@ -65,7 +65,7 @@ interface FarmDocument {
 }
 
 interface FarmsManagementProps {
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, params?: any) => void;
   userFarms?: string[];
 }
 
@@ -137,6 +137,39 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
   const isExpired = (expiryDate?: string) => {
     if (!expiryDate) return false;
     return new Date(expiryDate) < new Date();
+  };
+
+  const handleDeleteDocument = async (documentId: string, filePath: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo documento?')) return;
+
+    try {
+      // Delete file from storage
+      if (filePath) {
+        const { error: storageError } = await supabase.storage
+          .from('farm-documents')
+          .remove([filePath]);
+        
+        if (storageError) {
+          console.error('Errore nell\'eliminazione del file:', storageError);
+        }
+      }
+
+      // Delete document record
+      const { error } = await supabase
+        .from('farm_documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      // Refresh documents list
+      if (selectedFarm) {
+        fetchFarmData(selectedFarm.id);
+      }
+    } catch (error) {
+      console.error('Errore nell\'eliminazione del documento:', error);
+      alert('Errore nell\'eliminazione del documento');
+    }
   };
 
   useEffect(() => {
@@ -1364,24 +1397,34 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                             }}
                             className="p-1 text-brand-gray hover:text-brand-coral transition-colors"
                             title="Modifica documento"
-                          <button
-                            onClick={() => onNavigate('documents', { farmId: selectedFarm.id, editDocumentId: doc.id })}
-                            className="p-1 text-brand-gray hover:text-brand-coral transition-colors"
-                             title="Modifica documento"
-                           >
-                             <Edit size={12} />
-                           </button>
-                          </button>
                           >
                             <Edit size={12} />
                           </button>
                           <button
-                            onClick={() => handleDeleteDocument(doc.id, doc.file_path)}
+                            onClick={() => handleDeleteDocument(document.id, document.file_path)}
                             className="p-1 text-brand-gray hover:text-brand-red transition-colors"
                             title="Elimina documento"
                           >
                             <Trash2 size={12} />
                           </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {documents.length > 5 && (
+                    <div className="text-center pt-4">
+                      <button
+                        onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Vedi tutti i {documents.length} documenti →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
