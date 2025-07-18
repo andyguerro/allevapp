@@ -98,8 +98,6 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    fetchTechnicians();
-    fetchFarmTechnicians();
   }, []);
 
   const fetchData = async () => {
