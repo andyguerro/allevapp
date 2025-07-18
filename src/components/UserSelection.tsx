@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogIn, Users, Building, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { User, LogIn, Users, Building, AlertCircle, Eye, EyeOff, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface UserSelectionProps {
@@ -10,6 +10,8 @@ interface AppUser {
   id: string;
   full_name: string;
   email: string;
+  username: string;
+  password: string;
   role: 'admin' | 'manager' | 'technician';
   active: boolean;
   created_at: string;
@@ -17,15 +19,13 @@ interface AppUser {
 
 const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
   const [users, setUsers] = useState<AppUser[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [authenticating, setAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-
-  const CORRECT_PASSWORD = 'Z00Alleva';
 
   useEffect(() => {
     fetchUsers();
@@ -35,7 +35,7 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, full_name, email, username, password, role, active, created_at')
         .eq('active', true)
         .order('role', { ascending: true })
         .order('full_name', { ascending: true });
@@ -54,12 +54,12 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
     e.preventDefault();
     setAuthError(null);
 
-    if (!selectedUserId) {
-      setAuthError('Seleziona un utente');
+    if (!username.trim()) {
+      setAuthError('Inserisci il nome utente');
       return;
     }
 
-    if (!password) {
+    if (!password.trim()) {
       setAuthError('Inserisci la password');
       return;
     }
@@ -68,13 +68,20 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
 
     // Simula un piccolo delay per l'autenticazione
     setTimeout(() => {
-      if (password === CORRECT_PASSWORD) {
-        const selectedUser = users.find(user => user.id === selectedUserId);
-        if (selectedUser) {
-          onUserSelect(selectedUser);
-        }
+      const user = users.find(u => 
+        u.username.toLowerCase() === username.toLowerCase().trim() && 
+        u.password === password.trim()
+      );
+      
+      if (user) {
+        onUserSelect(user);
       } else {
-        setAuthError('Password non corretta');
+        const userExists = users.find(u => u.username.toLowerCase() === username.toLowerCase().trim());
+        if (userExists) {
+          setAuthError('Password non corretta');
+        } else {
+          setAuthError('Nome utente non trovato');
+        }
       }
       setAuthenticating(false);
     }, 500);
@@ -106,8 +113,6 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
       default: return '👤';
     }
   };
-
-  const selectedUser = users.find(user => user.id === selectedUserId);
 
   if (loading) {
     return (
@@ -186,51 +191,31 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
             <LogIn size={32} className="mx-auto text-brand-blue mb-3 sm:mb-4" />
             <h2 className="text-xl sm:text-2xl font-semibold text-brand-blue mb-2">Accesso Utente</h2>
             <p className="text-brand-gray text-sm sm:text-base">
-              Seleziona il tuo profilo e inserisci la password
+              Inserisci le tue credenziali di accesso
             </p>
           </div>
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* User Selection */}
+            {/* Username Input */}
             <div>
               <label className="block text-sm font-medium text-brand-blue mb-2">
-                Seleziona Utente
+                <User size={16} className="inline mr-2" />
+                Nome Utente
               </label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full px-4 py-3 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors bg-white"
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
+                placeholder="nome.cognome"
                 required
-              >
-                <option value="">-- Scegli un utente --</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {getRoleIcon(user.role)} {user.full_name} ({getRoleText(user.role)})
-                  </option>
-                ))}
-              </select>
+                autoComplete="username"
+              />
+              <p className="text-xs text-brand-gray mt-1">
+                Formato: nome.cognome (es: mario.rossi)
+              </p>
             </div>
-
-            {/* Selected User Info */}
-            {selectedUser && (
-              <div className="bg-gradient-to-r from-brand-blue/5 to-brand-coral/5 border border-brand-coral/20 rounded-lg p-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-brand-blue to-brand-blue-light rounded-full flex items-center justify-center text-white text-lg font-bold">
-                    {selectedUser.full_name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-brand-blue">
-                      {selectedUser.full_name}
-                    </h3>
-                    <p className="text-sm text-brand-gray">{selectedUser.email}</p>
-                    <span className={`text-xs font-medium ${getRoleColor(selectedUser.role)}`}>
-                      {getRoleText(selectedUser.role)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Password Input */}
             <div>
@@ -248,6 +233,7 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
                   className="w-full px-4 py-3 pr-12 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red transition-colors"
                   placeholder="Inserisci la password"
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -272,7 +258,7 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
             {/* Login Button */}
             <button
               type="submit"
-              disabled={authenticating || !selectedUserId || !password}
+              disabled={authenticating || !username.trim() || !password.trim()}
               className="w-full bg-gradient-to-r from-brand-red to-brand-red-light text-white py-3 px-6 rounded-lg hover:from-brand-red-dark hover:to-brand-red transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium"
             >
               {authenticating ? (
@@ -288,6 +274,19 @@ const UserSelection: React.FC<UserSelectionProps> = ({ onUserSelect }) => {
               )}
             </button>
           </form>
+
+          {/* Help Section */}
+          <div className="mt-6 p-4 bg-brand-blue/5 rounded-lg border border-brand-blue/20">
+            <div className="flex items-start space-x-2">
+              <Mail size={16} className="text-brand-blue mt-0.5" />
+              <div className="text-sm">
+                <p className="text-brand-blue font-medium mb-1">Non hai le credenziali?</p>
+                <p className="text-brand-gray">
+                  Contatta l'amministratore per ricevere il tuo nome utente e password via email.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Footer Info */}
           <div className="mt-6 sm:mt-8 pt-6 border-t border-brand-coral/20">
