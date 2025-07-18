@@ -1057,11 +1057,10 @@ const Reports: React.FC<ReportsProps> = ({ initialFilters, currentUser, userFarm
                   onChange={(e) => setFormData({ ...formData, urgency: e.target.value as any })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="">Seleziona urgenza</option>
-                  <option value="high">Alta</option>
                   <option value="low">Bassa</option>
-                  <option value="critical">Critica</option>
                   <option value="medium">Media</option>
+                  <option value="high">Alta</option>
+                  <option value="critical">Critica</option>
                 </select>
               </div>
 
