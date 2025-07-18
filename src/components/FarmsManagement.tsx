@@ -927,6 +927,21 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                 )}
               </div>
             </button>
+
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'documents'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Documenti
+                {/* TODO: Add documents count */}
+              </div>
+            </button>
           </nav>
         </div>
 
@@ -1161,6 +1176,22 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
                   );
                 })
               )}
+            </div>
+          )}
+
+          {/* Documents Tab */}
+          {activeTab === 'documents' && (
+            <div className="space-y-4">
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>Gestione documenti per questo allevamento</p>
+                <button
+                  onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
+                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Gestisci Documenti
+                </button>
+              </div>
             </div>
           )}
         </div>
