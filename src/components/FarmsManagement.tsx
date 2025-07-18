@@ -1234,16 +1234,118 @@ export default function FarmsManagement({ onNavigate, userFarms = [] }: FarmsMan
           {/* Documents Tab */}
           {activeTab === 'documents' && (
             <div className="space-y-4">
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Gestione documenti per questo allevamento</p>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Documenti ({documents.length})
+                </h3>
                 <button
                   onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
-                  className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
                 >
+                  <Plus className="w-4 h-4" />
                   Gestisci Documenti
                 </button>
               </div>
+
+              {documents.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Nessun documento caricato per questo allevamento</p>
+                  <button
+                    onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
+                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Carica Primo Documento
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {documents.slice(0, 5).map((document) => (
+                    <div key={document.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="text-2xl">
+                            {getFileIcon(document.mime_type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-gray-900 truncate">{document.title}</h4>
+                              {document.is_important && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                                  <AlertCircle size={12} className="mr-1" />
+                                  Importante
+                                </span>
+                              )}
+                            </div>
+                            
+                            {document.category_name && (
+                              <span 
+                                className="inline-block px-2 py-1 rounded-full text-xs font-medium text-white mr-2"
+                                style={{ backgroundColor: document.category_color }}
+                              >
+                                {document.category_name}
+                              </span>
+                            )}
+                            
+                            <div className="text-sm text-gray-600 mt-1">
+                              <div>File: {document.file_name}</div>
+                              <div className="flex items-center gap-4 mt-1">
+                                <span>Dimensione: {formatFileSize(document.file_size)}</span>
+                                {document.document_date && (
+                                  <span>Data: {new Date(document.document_date).toLocaleDateString()}</span>
+                                )}
+                                {document.expiry_date && (
+                                  <span className={`${isExpired(document.expiry_date) ? 'text-red-600 font-medium' : isExpiringSoon(document.expiry_date) ? 'text-yellow-600 font-medium' : ''}`}>
+                                    Scadenza: {new Date(document.expiry_date).toLocaleDateString()}
+                                    {isExpired(document.expiry_date) && ' (Scaduto)'}
+                                    {isExpiringSoon(document.expiry_date) && !isExpired(document.expiry_date) && ' (In scadenza)'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {document.tags && document.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {document.tags.slice(0, 3).map((tag, index) => (
+                                  <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                                    #{tag}
+                                  </span>
+                                ))}
+                                {document.tags.length > 3 && (
+                                  <span className="text-xs text-gray-500">+{document.tags.length - 3} altri</span>
+                                )}
+                              </div>
+                            )}
+                            
+                            <div className="text-xs text-gray-500 mt-2">
+                              Caricato da {document.created_user_name} il {new Date(document.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => downloadDocument(document.file_path, document.file_name)}
+                          className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Scarica documento"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {documents.length > 5 && (
+                    <div className="text-center pt-4">
+                      <button
+                        onClick={() => onNavigate('documents', { farmId: selectedFarm.id })}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Vedi tutti i {documents.length} documenti →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
