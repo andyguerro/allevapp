@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Building, Truck, Settings as SettingsIcon, Plus, Edit2, Trash2, Mail, Save, X, Tag, Palette, Eye, EyeOff, AlertCircle, CheckCircle, Send, Database, FileText, Calendar } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Building, Truck, Mail, Plus, Edit2, Trash2, Eye, EyeOff, Save, X, Tag, Palette, FileText, Calendar, Send, CheckCircle, AlertCircle, Database, HelpCircle, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Microsoft365SetupGuide from './Microsoft365SetupGuide';
 import StorageDiagnostics from './StorageDiagnostics';
