@@ -130,7 +130,7 @@ const Orders: React.FC = () => {
         phone: '+39 030 9938433',
         email: 'ordini@zooagri.it',
         color: '#1E3A8A',
-        logo: '/ZooG.png'
+        logo: '/ZooG.png',
         vat: '02309000980',
         footer: 'Società soggetta a direzione e coordinamento di Duerre S.p.A.'
       },
