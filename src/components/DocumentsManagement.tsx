@@ -115,6 +115,25 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
     fetchData();
   }, []);
 
+  // Handle edit document from external navigation
+  useEffect(() => {
+    if (initialFilters?.editDocumentId && documents.length > 0) {
+      const documentToEdit = documents.find(d => d.id === initialFilters.editDocumentId);
+      if (documentToEdit) {
+        setEditData({
+          title: documentToEdit.title,
+          description: documentToEdit.description || '',
+          category_id: documentToEdit.category_id || '',
+          document_date: documentToEdit.document_date || '',
+          expiry_date: documentToEdit.expiry_date || '',
+          tags: documentToEdit.tags ? documentToEdit.tags.join(', ') : '',
+          is_important: documentToEdit.is_important
+        });
+        setEditingDocument(documentToEdit);
+        setShowEditModal(true);
+      }
+    }
+  }, [initialFilters?.editDocumentId, documents]);
   const fetchData = async () => {
     try {
       // Fetch documents with joined data
@@ -418,8 +437,54 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
       color: '#6b7280',
       icon: 'folder'
     });
+  const handleUpdateDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingDocument) return;
+    
+    try {
+      // Parse tags
+      const tagsArray = editData.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+
+      const { error } = await supabase
+        .from('farm_documents')
+        .update({
+          title: editData.title,
+          description: editData.description || null,
+          category_id: editData.category_id || null,
+          document_date: editData.document_date || null,
+          expiry_date: editData.expiry_date || null,
+          tags: tagsArray.length > 0 ? tagsArray : null,
+          is_important: editData.is_important
+        })
+        .eq('id', editingDocument.id);
     setEditingCategory(null);
+      if (error) throw error;
     setShowCategoryModal(false);
+      await fetchData();
+      resetEditForm();
+      alert('Documento aggiornato con successo!');
+    } catch (error) {
+      console.error('Errore nell\'aggiornamento documento:', error);
+      alert('Errore nell\'aggiornamento del documento');
+    }
+  };
+  };
+  const resetEditForm = () => {
+    setEditData({
+      title: '',
+      description: '',
+      category_id: '',
+      document_date: '',
+      expiry_date: '',
+      tags: '',
+      is_important: false
+    });
+    setEditingDocument(null);
+    setShowEditModal(false);
   };
 
   const handleFilterChange = (filterId: string, selected: Option[]) => {
@@ -599,6 +664,25 @@ const DocumentsManagement: React.FC<DocumentsManagementProps> = ({ currentUser, 
                   title="Scarica documento"
                 >
                   <Download size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setEditData({
+                      title: document.title,
+                      description: document.description || '',
+                      category_id: document.category_id || '',
+                      document_date: document.document_date || '',
+                      expiry_date: document.expiry_date || '',
+                      tags: document.tags ? document.tags.join(', ') : '',
+                      is_important: document.is_important
+                    });
+                    setEditingDocument(document);
+                    setShowEditModal(true);
+                  }}
+                  className="p-2 text-brand-gray hover:text-brand-coral transition-colors"
+                  title="Modifica documento"
+                >
+                  <Edit size={16} />
                 </button>
                 <button
                   onClick={() => handleDeleteDocument(document.id, document.file_path)}
