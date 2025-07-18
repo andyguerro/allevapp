@@ -1405,9 +1405,9 @@ const Settings: React.FC = () => {
                   onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as 'admin' | 'manager' | 'technician' })}
                   className="w-full px-3 py-2 border border-brand-gray/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red focus:border-brand-red"
                 >
-                  <option value="technician">Tecnico</option>
-                  <option value="manager">Manager</option>
                   <option value="admin">Amministratore</option>
+                  <option value="manager">Manager</option>
+                  <option value="technician">Tecnico</option>
                 </select>
               </div>
 
